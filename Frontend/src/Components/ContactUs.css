@@ -1,0 +1,271 @@
+/* Base Reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Animated Main Background */
+.contactus-main-bg {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e0e7ff 0%, #f0fdfa 100%);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 40px 16px;
+  overflow: hidden;
+}
+
+/* Animated glassy blobs */
+.contactus-main-bg::before,
+.contactus-main-bg::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.5;
+  z-index: 0;
+  animation: blobMove 18s infinite alternate;
+}
+.contactus-main-bg::before {
+  width: 350px;
+  height: 350px;
+  background: #a5b4fc;
+  top: -80px;
+  left: -100px;
+  animation-delay: 0s;
+}
+.contactus-main-bg::after {
+  width: 250px;
+  height: 250px;
+  background: #67e8f9;
+  bottom: -50px;
+  right: -60px;
+  animation-delay: 2s;
+}
+@keyframes blobMove {
+  0% { transform: scale(1) translateY(0);}
+  100% { transform: scale(1.2) translateY(40px);}
+}
+
+/* Header Styles */
+.contactus-header {
+  text-align: center;
+  margin-bottom: 32px;
+  z-index: 2;
+  position: relative;
+}
+
+.contactus-title {
+  font-size: 2.8rem;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 16px rgba(30, 41, 59, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.contactus-title i {
+  color: #6366f1;
+  font-size: 2.2rem;
+  filter: drop-shadow(0 2px 8px #6366f166);
+}
+
+.contactus-subtitle {
+  font-size: 1.2rem;
+  color: #64748b;
+  font-weight: 400;
+}
+
+/* Glassmorphism Card */
+.contactus-content {
+  width: 100%;
+  max-width: 440px;
+  background: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.22), 0 0 0 2px #a5b4fc44;
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-radius: 24px;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  padding: 38px 28px;
+  margin-bottom: 32px;
+  margin-top:20px;
+  transition: box-shadow 0.3s, border 0.3s;
+  z-index: 2;
+  position: relative;
+  overflow: hidden;
+}
+.contactus-content:hover {
+  box-shadow: 0 12px 48px 0 rgba(99, 102, 241, 0.22), 0 0 0 4px #67e8f955;
+  border-color: #a5b4fc;
+}
+
+.contactus-content::before {
+  content: "";
+  position: absolute;
+  top: -30px; left: 50px;
+  width: 80px; height: 80px;
+  background: linear-gradient(135deg, #6366f1 60%, #06b6d4 100%);
+  opacity: 0.18;
+  border-radius: 50%;
+  filter: blur(18px);
+  z-index: 1;
+}
+
+/* Form Styles */
+.contactus-form {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  z-index: 2;
+  position: relative;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+
+label {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #334155;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+label i {
+  color: #06b6d4;
+  font-size: 1.12rem;
+}
+
+input,
+textarea {
+  padding: 13px 16px 13px 38px;
+  border-radius: 15px;
+  border: 1.2px solid #cbd5e1;
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 1rem;
+  color: #1e293b;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  resize: none;
+  box-shadow: 0 1px 8px 0 #6366f111;
+}
+
+input:focus,
+textarea:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px #a5b4fc44;
+}
+
+.form-group .input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6366f1;
+  font-size: 1.08rem;
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+/* Button Styles */
+.primary-btn {
+  background: linear-gradient(90deg, #6366f1 0%, #06b6d4 100%);
+  color: #fff;
+  font-weight: 700;
+  padding: 14px 0;
+  border: none;
+  border-radius: 14px;
+  font-size: 1.15rem;
+  cursor: pointer;
+  box-shadow: 0 2px 16px 0 rgba(99, 102, 241, 0.16);
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+}
+
+.primary-btn::after {
+  content: "\f1d8";
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  position: absolute;
+  right: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.1rem;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.primary-btn:hover,
+.primary-btn:focus {
+  background: linear-gradient(90deg, #06b6d4 0%, #6366f1 100%);
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 6px 28px 0 #6366f155;
+}
+
+/* Thank You Message */
+.contactus-thankyou {
+  text-align: center;
+  padding: 32px 0;
+  z-index: 2;
+  position: relative;
+}
+
+.contactus-thankyou h2 {
+  font-size: 2rem;
+  color: #16a34a;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 12px #16a34a33;
+}
+
+.contactus-thankyou p {
+  color: #334155;
+  margin-bottom: 24px;
+  font-size: 1.08rem;
+}
+
+.reset-btn {
+  background: linear-gradient(90deg, #f59e42 0%, #f43f5e 100%);
+  margin-top: 10px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  border-radius: 12px;
+}
+
+.reset-btn:hover,
+.reset-btn:focus {
+  background: linear-gradient(90deg, #f43f5e 0%, #f59e42 100%);
+  box-shadow: 0 2px 18px 0 #f43f5e33;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+  .contactus-content {
+    padding: 16px 4px;
+    max-width: 99vw;
+    border-radius: 16px;
+  }
+  .contactus-title {
+    font-size: 1.5rem;
+  }
+  .contactus-header {
+    margin-bottom: 18px;
+  }
+}

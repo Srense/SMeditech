@@ -1,0 +1,242 @@
+/* FloatingGuide.css */
+
+/* Base container for the entire chat window */
+.floating-guide-chat {
+    position: fixed; /* Makes it float */
+    bottom: 20px;
+    right: 20px;
+    width: 350px; /* Standard width for a chat widget */
+    max-width: 90vw; /* Responsive for smaller screens */
+    height: 450px; /* Standard height */
+    max-height: 80vh; /* Responsive for smaller screens */
+    background-color: #ffffff; /* White background */
+    border-radius: 12px; /* Nicely rounded corners */
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Softer, more pronounced shadow */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Ensures no content spills out of rounded corners */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Modern font */
+    z-index: 1000; /* Ensures it stays on top */
+}
+
+/* Chat Header */
+.chat-header {
+    background-color: #128C7E; /* WhatsApp green-blue */
+    color: #fff;
+    padding: 15px 20px;
+    font-size: 1.1em;
+    font-weight: 600;
+    text-align: center;
+    border-top-left-radius: 12px; /* Match container border-radius */
+    border-top-right-radius: 12px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow for header */
+    display: flex; /* Added for alignment of title and close button */
+    justify-content: space-between; /* Added for alignment of title and close button */
+    align-items: center; /* Added for alignment of title and close button */
+    cursor: grab; /* Indicates it's draggable */
+}
+
+.chat-header.dragging {
+    cursor: grabbing; /* Cursor when actively dragging */
+}
+
+/* Chat Body - Message Display Area */
+.chat-body {
+    flex-grow: 1; /* Takes up available space */
+    padding: 15px;
+    overflow-y: auto; /* Enables scrolling for messages */
+    background-color: #E5DDD5; /* Light, warm background for chat area */
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Space between messages */
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: #888 #f1f1f1; /* Firefox */
+}
+
+/* Webkit browsers (Chrome, Safari) scrollbar */
+.chat-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.chat-body::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+.chat-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Individual Chat Message Bubble */
+.chat-message {
+    max-width: 80%; /* Messages don't span full width */
+    padding: 10px 12px;
+    border-radius: 18px; /* Rounded message bubbles */
+    word-wrap: break-word; /* Prevents long words from overflowing */
+    line-height: 1.4;
+    font-size: 0.95em;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08); /* Subtle shadow for bubbles */
+    align-self: flex-start; /* Default alignment for general messages */
+    background-color: #fff; /* Default message bubble background */
+}
+
+.chat-message b {
+    color: #075E54; /* Darker green for username */
+    font-weight: 600;
+}
+
+.chat-message span {
+    display: block; /* Timestamp on a new line */
+    font-size: 0.75em;
+    color: #777;
+    margin-top: 4px;
+    text-align: right;
+}
+
+/* Specific styling for messages sent by the current user */
+.chat-message.self-message {
+    background-color: #DCF8C6; /* Lighter green for sent messages */
+    align-self: flex-end; /* Align to the right for sent messages */
+    text-align: right; /* Text aligns to the right for sent messages */
+    border-bottom-right-radius: 2px; /* Adjust corner for self-message */
+    border-bottom-left-radius: 18px; /* Keep other corners rounded */
+}
+
+/* Chat Footer - Input and Send Button */
+.chat-footer {
+    display: flex;
+    padding: 15px;
+    border-top: 1px solid #eee; /* Separator line */
+    background-color: #f0f0f0; /* Light grey footer background */
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+.chat-footer input {
+    flex-grow: 1;
+    padding: 10px 15px;
+    border: 1px solid #ddd; /* Light border */
+    border-radius: 25px; /* Pill-shaped input field */
+    font-size: 1em;
+    outline: none; /* Remove default focus outline */
+    margin-right: 10px;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.chat-footer input:focus {
+    border-color: #128C7E; /* Highlight border on focus */
+    box-shadow: 0 0 0 3px rgba(18, 140, 126, 0.2); /* Soft glow on focus */
+}
+
+.chat-footer button {
+    background-color: #128C7E; /* Match header background */
+    color: white;
+    border: none;
+    border-radius: 25px; /* Pill-shaped button */
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 500;
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-footer button:hover {
+    background-color: #075E54; /* Darker green on hover */
+}
+
+.chat-footer button:active {
+    transform: scale(0.98); /* Slight press effect */
+}
+
+/* Close button in header */
+.chat-header .close-button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5em;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: transform 0.1s ease-in-out;
+}
+
+.chat-header .close-button:hover {
+    transform: rotate(90deg);
+}
+
+/* Floating button when chat is closed */
+.floating-chat-toggle-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 64px; /* w-16 */
+    height: 64px; /* h-16 */
+    background: linear-gradient(to bottom right, #14B8A6, #059669); /* from-teal-500 to-emerald-600 */
+    color: white;
+    border-radius: 9999px; /* rounded-full */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out; /* transition-all duration-300 ease-in-out */
+    z-index: 1000;
+}
+
+.floating-chat-toggle-button:hover {
+    transform: scale(1.05); /* hover:scale-105 */
+}
+
+.floating-chat-toggle-button:active {
+    transform: scale(0.95); /* active:scale-95 */
+}
+
+
+/* Basic responsiveness for very small screens */
+@media (max-width: 400px) {
+    .floating-guide-chat {
+        width: 95vw;
+        height: 90vh;
+        bottom: 10px;
+        right: 10px;
+        border-radius: 8px;
+    }
+
+    .chat-header {
+        font-size: 1em;
+        padding: 12px 15px;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+    }
+
+    .chat-body {
+        padding: 10px;
+    }
+
+    .chat-message {
+        padding: 8px 10px;
+        font-size: 0.9em;
+    }
+
+    .chat-footer {
+        padding: 10px;
+    }
+
+    .chat-footer input {
+        padding: 8px 12px;
+        font-size: 0.9em;
+    }
+
+    .chat-footer button {
+        padding: 8px 15px;
+        font-size: 0.9em;
+    }
+}

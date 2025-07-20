@@ -1,0 +1,32 @@
+.spotlight-text-container {
+  position: relative;
+  display: inline-block;
+  /* For demo: adjust as needed */
+}
+
+.spotlight-text {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #050036;
+  position: relative;
+  z-index: 1;
+  /* Responsive: */
+  line-height: 1.1;
+}
+
+.spotlight-mask {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  /* The mask uses a radial gradient centered at the mouse position */
+  background: radial-gradient(
+    circle 60px at var(--spot-x, -100px) var(--spot-y, -100px),
+    rgba(0,0,0,0.0) 0%,
+    rgba(0,0,0,0.0) 50%,
+    rgba(0,0,0,0.4) 70%,
+    rgba(138, 31, 31, 0.7) 100%
+  );
+  opacity: var(--spot-visible, 0);
+  transition: opacity 0.2s;
+}
