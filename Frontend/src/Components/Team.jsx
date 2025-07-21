@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import "./Team.css";
 import Header from "./Header";
 import NavDrawer from "./NavDrawer";
-import Sohel from '../assets/Images/sohel.jpg'; 
-import Prince from '../assets/Images/prince.png'; 
-import Moinak from '../assets/Images/moinak.png';
-import Saikat from '../assets/Images/saikat.png';
+import Sohel from '../assets/images/sohel.jpg'; 
+import Prince from '../assets/images/prince.png'; 
+import Moinak from '../assets/images/moinak.png';
+import Saikat from '../assets/images/saikat.png';
 
 const teamMembers = [
   {
