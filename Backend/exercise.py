@@ -86,7 +86,7 @@ data_tracking = {
     "Shoulder Circles": {"times": [], "reps": [], "points": []},
     "Arm Raises": {"times": [], "reps": [], "points": []},
     "Wall Push-ups": {"times": [], "reps": [], "points": []},
-    "Elbow Flexion": {"times": [], "reps": [], "points": []},
+    "Elbow Flexion": {"times": [], "reps": []},
     "Wrist Rotations": {"times": [], "reps": []},
     "Knee Extensions": {"times": [], "reps": []},
     "Heel Slides": {"times": [], "reps": []},
@@ -112,6 +112,10 @@ def make_prediction(history):
 
 def generate_frames():
     global exercise, reps, points, stage, fullscreen, level, progress, max_points, achievements, history, data_tracking, time_start
+    # Note: cv2.VideoCapture(0) tries to access the local webcam.
+    # On a remote server like Render, this will not work as there's no webcam.
+    # This video feed will only work if running locally.
+    # For production, you might need to stream video from a client or use pre-recorded video.
     cap = cv2.VideoCapture(0)
     screen_width = 1280
     screen_height = 720
@@ -119,6 +123,12 @@ def generate_frames():
     while True:
         ret, frame = cap.read()
         if not ret or frame is None:
+            # If running on Render, cap.read() will fail.
+            # You might want to break or handle this more gracefully for a production server
+            # that doesn't have a camera, or if you plan to receive video streams.
+            print("Warning: Could not read frame from camera. Is a webcam available or is this running remotely?")
+            # To prevent an infinite loop of errors in a headless environment,
+            # you might want to break or sleep here. For now, breaking.
             break
 
         frame = cv2.flip(frame, 1)
@@ -538,5 +548,22 @@ def handle_send_message(data):
         print("Received malformed message:", data)
 
 
-if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+# --- IMPORTANT FOR PRODUCTION DEPLOYMENT ON RENDER ---
+# The `if __name__ == '__main__':` block below is typically used for local development.
+# For production on platforms like Render, a WSGI server (like Gunicorn) is used
+# to run the application. You will specify the start command on Render's dashboard.
+# Therefore, you should remove or comment out the socketio.run() call.
+
+# If you were running locally, you would use:
+# if __name__ == '__main__':
+#     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
+# For Render deployment, ensure your `requirements.txt` includes:
+# gunicorn
+# eventlet # or gevent
+
+# And your Render "Start Command" should be:
+# gunicorn --worker-class eventlet -w 1 exercise:socketio.wsgi_app --bind 0.0.0.0:$PORT
+# OR if your main Flask app (`app`) handles Flask-SocketIO directly without `socketio.wsgi_app` needing to be explicitly passed:
+# gunicorn --worker-class eventlet -w 1 exercise:app --bind 0.0.0.0:$PORT
+# (The `exercise:socketio.wsgi_app` is generally more explicit and safer for Flask-SocketIO setups)
