@@ -1,5 +1,3 @@
-# exercise.py
-
 from flask import Flask, Response, request, jsonify
 from datetime import datetime, timedelta
 from flask_cors import CORS
@@ -129,7 +127,6 @@ def generate_frames():
 
         cv2.putText(frame, f"Exercise: {exercise}", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
 
-        # Squat Tracking
         if exercise == "Squats" and results_pose.pose_landmarks:
             mp_drawing.draw_landmarks(frame, results_pose.pose_landmarks, mp_pose.POSE_CONNECTIONS)
             landmarks = results_pose.pose_landmarks.landmark
@@ -144,7 +141,6 @@ def generate_frames():
                 reps += 1
                 points += 10
 
-        # Finger Twirling
         elif exercise == "Finger Twirling" and results_hands.multi_hand_landmarks:
             for hand_landmarks in results_hands.multi_hand_landmarks:
                 mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
@@ -158,7 +154,6 @@ def generate_frames():
                     reps += 1
                     points += 5
 
-        # Head Rotation
         elif exercise == "Head Rotation" and results_pose.pose_landmarks:
             mp_drawing.draw_landmarks(frame, results_pose.pose_landmarks, mp_pose.POSE_CONNECTIONS)
             landmarks = results_pose.pose_landmarks.landmark
@@ -173,7 +168,6 @@ def generate_frames():
                 reps += 1
                 points += 7
 
-        # Fist Rotation
         elif exercise == "Fist Rotation" and results_hands.multi_hand_landmarks:
             for hand_landmarks in results_hands.multi_hand_landmarks:
                 mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
@@ -229,7 +223,6 @@ def video_feed():
         stage = None
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-# --- Appointment Booking Endpoint ---
 @app.route('/api/appointment', methods=['POST'])
 def book_appointment():
     data = request.json
@@ -250,7 +243,6 @@ def book_appointment():
         print("Error saving appointment:", e)
         return jsonify({"error": "Failed to save appointment"}), 500
 
-# --- Callback Request Endpoint ---
 @app.route('/api/callback', methods=['POST'])
 def request_callback():
     data = request.json
@@ -273,8 +265,6 @@ def request_callback():
     except Exception as e:
         print("Error saving callback or sending email:", e)
         return jsonify({"error": "Failed to save callback or send email"}), 500
-
-# --- User Authentication Endpoints ---
 
 def find_user(email):
     return users_col.find_one({"email": email})
@@ -372,7 +362,6 @@ def reset_password(token):
     users_col.update_one({"email": email}, {"$set": {"password": hashed_pw}})
     return jsonify({"message": "Password reset successful"}), 200
 
-# --- PROFILE ENDPOINTS ---
 def get_current_user():
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
@@ -415,7 +404,6 @@ def update_profile():
     user = users_col.find_one({"_id": user["_id"]})
     return jsonify({"user": serialize_user(user)}), 200
 
-# --- Status Endpoints ---
 @app.route('/api/db_status')
 def db_status():
     try:
@@ -428,7 +416,6 @@ def db_status():
 def health():
     return jsonify({"status": "ok"}), 200
 
-# --- Mock Knowledge Base ---
 KNOWLEDGE_BASE = [
     {"id": "faq1", "keywords": ["services", "physiotherapy", "offer"], "content": "Our website offers ... [redacted for length] ... 'Services' page."},
     {"id": "faq2", "keywords": ["book", ...], "content": "Booking an appointment is easy! ..."},
@@ -468,7 +455,6 @@ def get_ai_response_from_kb(user_query):
         else:
             return "I apologize, but I couldn't find a direct answer to that in my knowledge base. My purpose is to assist with questions related to physiotherapy services and our clinic. Could you please ask something else or rephrase your question?"
 
-# --- WebSocket Chat ---
 @socketio.on('send_message', namespace='/chat')
 def handle_send_message(data):
     user_message_text = data.get("text")
@@ -498,6 +484,5 @@ def handle_send_message(data):
     else:
         print("Received malformed message:", data)
 
-# --- For Render deployment: DO NOT run app/socketio here ---
-# Gunicorn will start the app with 'gunicorn --worker-class eventlet -w 1 exercise:socketio.wsgi_app --bind 0.0.0.0:$PORT'
-# No if __name__ == '__main__' block required.
+# --- Add this line for Gunicorn compatibility ---
+wsgi_app = socketio.wsgi_app
