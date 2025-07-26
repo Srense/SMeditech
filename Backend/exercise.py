@@ -485,4 +485,4 @@ def handle_send_message(data):
         print("Received malformed message:", data)
 
 # --- Add this line for Gunicorn compatibility ---
-wsgi_app = socketio.wsgi_app
+wsgi_app = socketio
