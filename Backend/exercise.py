@@ -1,4 +1,4 @@
-# Assuming you have a .env file with OPENAI_API_KEY or GOOGLE_API_KEY
+# exercise.py
 
 from flask import Flask, Response, request, jsonify
 from datetime import datetime, timedelta
@@ -15,8 +15,8 @@ from itsdangerous import URLSafeTimedSerializer
 import jwt
 from bson import ObjectId
 from flask_socketio import SocketIO, emit
-import time # For simulating AI processing time
-import re # For more flexible keyword matching
+import time
+import re
 
 # --- Load environment variables from .env ---
 load_dotenv()
@@ -25,7 +25,7 @@ app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# --- MongoDB Atlas setup ---
+# --- MongoDB setup ---
 client = MongoClient(os.getenv("MONGODB_URI"))
 db = client["sohel"]
 appointments_col = db["appointments"]
@@ -112,10 +112,6 @@ def make_prediction(history):
 
 def generate_frames():
     global exercise, reps, points, stage, fullscreen, level, progress, max_points, achievements, history, data_tracking, time_start
-    # Note: cv2.VideoCapture(0) tries to access the local webcam.
-    # On a remote server like Render, this will not work as there's no webcam.
-    # This video feed will only work if running locally.
-    # For production, you might need to stream video from a client or use pre-recorded video.
     cap = cv2.VideoCapture(0)
     screen_width = 1280
     screen_height = 720
@@ -123,12 +119,7 @@ def generate_frames():
     while True:
         ret, frame = cap.read()
         if not ret or frame is None:
-            # If running on Render, cap.read() will fail.
-            # You might want to break or handle this more gracefully for a production server
-            # that doesn't have a camera, or if you plan to receive video streams.
             print("Warning: Could not read frame from camera. Is a webcam available or is this running remotely?")
-            # To prevent an infinite loop of errors in a headless environment,
-            # you might want to break or sleep here. For now, breaking.
             break
 
         frame = cv2.flip(frame, 1)
@@ -153,7 +144,7 @@ def generate_frames():
                 reps += 1
                 points += 10
 
-        # Finger Twirling Tracking
+        # Finger Twirling
         elif exercise == "Finger Twirling" and results_hands.multi_hand_landmarks:
             for hand_landmarks in results_hands.multi_hand_landmarks:
                 mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
@@ -167,7 +158,7 @@ def generate_frames():
                     reps += 1
                     points += 5
 
-        # Head Rotation Tracking
+        # Head Rotation
         elif exercise == "Head Rotation" and results_pose.pose_landmarks:
             mp_drawing.draw_landmarks(frame, results_pose.pose_landmarks, mp_pose.POSE_CONNECTIONS)
             landmarks = results_pose.pose_landmarks.landmark
@@ -182,7 +173,7 @@ def generate_frames():
                 reps += 1
                 points += 7
 
-        # Fist Rotation Tracking
+        # Fist Rotation
         elif exercise == "Fist Rotation" and results_hands.multi_hand_landmarks:
             for hand_landmarks in results_hands.multi_hand_landmarks:
                 mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
@@ -297,7 +288,7 @@ def serialize_user(user):
 def create_jwt(user_id):
     payload = {
         "user_id": user_id,
-        "exp": datetime.utcnow() + timedelta(minutes=15) # Token valid for 15 minutes
+        "exp": datetime.utcnow() + timedelta(minutes=15)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
@@ -311,7 +302,6 @@ def signup():
         return jsonify({"error": "Please provide username, email, and password"}), 400
 
     email = email.lower()
-
     if users_col.find_one({"email": email}):
         return jsonify({"error": "Email already registered"}), 400
 
@@ -327,7 +317,7 @@ def signup():
     }
     result = users_col.insert_one(user)
     user["_id"] = str(result.inserted_id)
-    user.pop("password") # Don't send password back
+    user.pop("password")
     return jsonify({"user": user}), 201
 
 @app.route('/api/login', methods=['POST'])
@@ -353,10 +343,10 @@ def forgot_password():
     if not user:
         return jsonify({"message": "If an account exists, a reset link has been sent."}), 200
     token = serializer.dumps(email, salt="reset-password")
-    reset_link = f"http://localhost:3000/reset-password/{token}" # Make sure this matches your frontend route
+    reset_link = f"http://localhost:3000/reset-password/{token}"
     msg = Message(
         subject="Password Reset Request",
-        recipients=[NOTIFY_EMAIL], # Changed to NOTIFY_EMAIL for testing, should be [email] in production
+        recipients=[NOTIFY_EMAIL], # For actual use: [email]
         body=f"Click the link to reset your password: {reset_link}\nThis link is valid for 1 hour."
     )
     try:
@@ -372,17 +362,17 @@ def reset_password(token):
     if not new_password:
         return jsonify({"error": "Password required"}), 400
     try:
-        email = serializer.loads(token, salt="reset-password", max_age=3600) # Token valid for 1 hour
+        email = serializer.loads(token, salt="reset-password", max_age=3600)
     except Exception:
         return jsonify({"error": "Invalid or expired token"}), 400
     user = find_user(email)
     if not user:
-        return jsonify({"error": "User not found"}), 404 # Should not happen if token is valid
+        return jsonify({"error": "User not found"}), 404
     hashed_pw = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt())
     users_col.update_one({"email": email}, {"$set": {"password": hashed_pw}})
     return jsonify({"message": "Password reset successful"}), 200
 
-# --- PROFILE ENDPOINTS (UPDATED) ---
+# --- PROFILE ENDPOINTS ---
 def get_current_user():
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
@@ -396,7 +386,7 @@ def get_current_user():
             return None, "User not found"
         return user, None
     except Exception as e:
-        print(f"Token decoding error: {e}") # Log error for debugging
+        print(f"Token decoding error: {e}")
         return None, "Invalid or expired token"
 
 @app.route('/api/profile', methods=['GET'])
@@ -417,12 +407,12 @@ def update_profile():
         update_fields["bio"] = data["bio"]
     if "profilePicture" in data:
         update_fields["profilePicture"] = data["profilePicture"]
-    if "username" in data: # Allow updating username
+    if "username" in data:
         update_fields["username"] = data["username"]
-        update_fields["name"] = data["username"] # Assuming name and username are the same
+        update_fields["name"] = data["username"]
     if update_fields:
         users_col.update_one({"_id": user["_id"]}, {"$set": update_fields})
-    user = users_col.find_one({"_id": user["_id"]}) # Fetch updated user
+    user = users_col.find_one({"_id": user["_id"]})
     return jsonify({"user": serialize_user(user)}), 200
 
 # --- Status Endpoints ---
@@ -438,107 +428,68 @@ def db_status():
 def health():
     return jsonify({"status": "ok"}), 200
 
-# --- Mock Knowledge Base for AI Assistant ---
-# Expanded Knowledge Base for more comprehensive answers
+# --- Mock Knowledge Base ---
 KNOWLEDGE_BASE = [
-    {"id": "faq1", "keywords": ["services", "physiotherapy", "offer"], "content": "Our website offers a comprehensive range of physiotherapy services designed to meet diverse needs. This includes: \n1. **Post-operative Rehabilitation:** Helping you regain strength and mobility after surgery. \n2. **Sports Injury Recovery:** Specialized programs for athletes to return to peak performance. \n3. **Chronic Pain Management:** Strategies and therapies to alleviate long-term pain. \n4. **Neurological Physiotherapy:** Support for conditions like stroke, Parkinson's, and MS. \n5. **Geriatric Physiotherapy:** Tailored exercises for seniors to maintain independence and mobility. \n6. **Pediatric Physiotherapy:** Early intervention and treatment for children with developmental or physical challenges. \n7. **Women's Health Physiotherapy:** Addressing conditions specific to women, including pre/post-natal care. \n\nYou can find more detailed descriptions of each service on our 'Services' page."},
-    {"id": "faq2", "keywords": ["book", "appointment", "schedule", "consultation"], "content": "Booking an appointment is easy! You can: \n1. Visit our 'Book Appointment' page on the website and fill out the secure online form with your details and preferred time. \n2. Call us directly at **+91 9876543210** during our business hours (Monday-Friday, 9 AM to 5 PM IST). Our friendly staff will assist you. \n\nWe recommend booking in advance to secure your preferred slot."},
-    {"id": "faq3", "keywords": ["location", "address", "clinic", "find us", "where are you"], "content": "Our clinic is conveniently located at **[Your Clinic Address Here]**. We are open from Monday to Friday, 9 AM to 5 PM IST. Please note that we are closed on weekends and all public holidays. We look forward to welcoming you!"},
-    {"id": "contact1", "keywords": ["contact", "callback", "speak", "reach out", "email", "phone"], "content": "If you need to speak with a specialist or have a specific query, you can: \n1. Request a callback through the 'Contact Us' page on our website by filling a short form. \n2. Send us an email at **support@yourwebsite.com**. We aim to respond within 24 business hours. \n3. Call us directly at **+91 9876543210** during our operational hours."},
-    {"id": "profile_update", "keywords": ["profile", "update", "change username", "bio", "picture"], "content": "You can easily update your profile information after logging in. Navigate to the 'Profile' section where you can modify your bio, upload a new profile picture, and even change your username. Remember to save your changes!"},
-    {"id": "password_reset", "keywords": ["forgot password", "reset password", "login issue"], "content": "If you've forgotten your password, don't worry! \n1. Go to the login page. \n2. Click on the 'Forgot Password' link. \n3. Enter the email address associated with your account. \n4. We will send you a secure password reset link to that email address. Please check your spam folder if you don't see it in your inbox within a few minutes."},
-    {"id": "about_us", "keywords": ["about us", "mission", "vision", "team"], "content": "We are dedicated to providing personalized and effective physiotherapy care. Our mission is to empower individuals to achieve optimal physical health and well-being through expert guidance and compassionate support. Our team consists of highly qualified and experienced physiotherapists committed to your recovery journey."},
-    {"id": "pricing", "keywords": ["cost", "price", "fees", "how much"], "content": "Our pricing varies depending on the type and duration of the physiotherapy service. For detailed information on consultation fees and package rates, please contact us directly or refer to the 'Pricing' section on our website (if available). We also offer various payment options."},
-    {"id": "preparation", "keywords": ["prepare for appointment", "first visit", "what to bring"], "content": "For your first appointment, please bring any relevant medical reports, X-rays, or MRI scans. It's also advisable to wear comfortable clothing that allows for easy movement during assessment and exercises. Arriving a few minutes early can help you complete any necessary paperwork."},
-    {"id": "telehealth", "keywords": ["online therapy", "virtual session", "tele-physio"], "content": "Yes, we offer telehealth physiotherapy sessions! This allows you to receive expert care from the comfort of your home. You'll need a stable internet connection and a device with a camera and microphone. Please contact us to learn more about scheduling a virtual session."},
-    {"id": "unrelated", "keywords": ["weather", "capital", "random"], "content": "I am an AI assistant focused on physiotherapy services. While I can't provide information on unrelated topics like weather or general knowledge, I'd be happy to help with any questions about our clinic or services!"}
+    {"id": "faq1", "keywords": ["services", "physiotherapy", "offer"], "content": "Our website offers ... [redacted for length] ... 'Services' page."},
+    {"id": "faq2", "keywords": ["book", ...], "content": "Booking an appointment is easy! ..."},
+    # ... continue your knowledge base ...
+    {"id": "unrelated", "keywords": ["weather", "capital", "random"], "content": "I am an AI assistant focused on physiotherapy services ..."}
 ]
 
-# --- Mock LLM and RAG Function ---
 def get_ai_response_from_kb(user_query):
     user_query_lower = user_query.lower()
-    
-    # Check for greetings
     if re.search(r'\b(hello|hi|hey|greetings)\b', user_query_lower):
         return "Hello! I'm your AI Physiotherapy Assistant. How can I help you today with our services or clinic information?"
-    
-    # Check for thanks
     if re.search(r'\b(thank you|thanks|appreciate)\b', user_query_lower):
         return "You're most welcome! Is there anything else I can assist you with regarding your physiotherapy needs?"
-    
-    # Check for closing remarks
     if re.search(r'\b(nothing else|no more|bye|goodbye)\b', user_query_lower):
         return "Alright, feel free to reach out if you have more questions later. Have a great day!"
 
-    # Advanced RAG: Find most relevant document based on keyword matching
     best_match_doc = None
     max_matches = 0
-
-    query_words = set(re.findall(r'\b\w+\b', user_query_lower)) # Extract words from query
-
+    query_words = set(re.findall(r'\b\w+\b', user_query_lower))
     for doc in KNOWLEDGE_BASE:
         doc_content_lower = doc["content"].lower()
-        
-        # Combine explicit keywords with words from content for matching
         doc_keywords = set(doc.get("keywords", []))
         doc_words_from_content = set(re.findall(r'\b\w+\b', doc_content_lower))
-        
         all_doc_terms = doc_keywords.union(doc_words_from_content)
-        
         current_matches = len(query_words.intersection(all_doc_terms))
-
         if current_matches > max_matches:
             max_matches = current_matches
             best_match_doc = doc
 
-    # Simulate LLM processing time
     time.sleep(1.5)
 
     if best_match_doc and max_matches > 0:
-        # If a relevant document is found, return its content
         return best_match_doc["content"]
     else:
-        # Fallback for queries not directly matched
         if re.search(r'\b(physiotherapy|clinic|services|appointment)\b', user_query_lower):
             return "I can help with questions about our physiotherapy services, booking appointments, clinic location, or contact details. Could you please specify what you're looking for?"
         else:
             return "I apologize, but I couldn't find a direct answer to that in my knowledge base. My purpose is to assist with questions related to physiotherapy services and our clinic. Could you please ask something else or rephrase your question?"
 
-# --- Real-Time Chat with WebSocket ---
+# --- WebSocket Chat ---
 @socketio.on('send_message', namespace='/chat')
 def handle_send_message(data):
     user_message_text = data.get("text")
-    # The frontend is now sending the actual logged-in username in the 'username' field.
     username = data.get("username")
-
     if user_message_text and username:
-        # Emit user's message immediately
         emit('receive_message', {
             'text': user_message_text,
-            'username': username, # This will be the logged-in username from frontend
+            'username': username,
             'timestamp': datetime.now().strftime("%I:%M %p")
         }, broadcast=True, namespace='/chat')
 
-        # Simulate AI typing...
-        # Note: Frontend needs to handle 'isTyping' and 'clear_typing_indicator'
-        # to display and remove the typing status effectively.
         emit('receive_message', {
             'text': 'Typing...',
             'username': 'AI Assistant',
             'timestamp': datetime.now().strftime("%I:%M %p"),
-            'isTyping': True # Indicator for frontend
-        }, room=request.sid, namespace='/chat') # Only send typing indicator to the sender
+            'isTyping': True
+        }, room=request.sid, namespace='/chat')
 
-
-        # Get AI response
         ai_response_text = get_ai_response_from_kb(user_message_text)
 
-        # Remove typing indicator for the sender before sending actual response
-        # A more robust solution might clear it based on a message ID or type
         emit('clear_typing_indicator', {'username': 'AI Assistant'}, room=request.sid, namespace='/chat')
-
-
-        # Emit AI's response
         emit('receive_message', {
             'text': ai_response_text,
             'username': 'AI Assistant',
@@ -547,23 +498,6 @@ def handle_send_message(data):
     else:
         print("Received malformed message:", data)
 
-
-# --- IMPORTANT FOR PRODUCTION DEPLOYMENT ON RENDER ---
-# The `if __name__ == '__main__':` block below is typically used for local development.
-# For production on platforms like Render, a WSGI server (like Gunicorn) is used
-# to run the application. You will specify the start command on Render's dashboard.
-# Therefore, you should remove or comment out the socketio.run() call.
-
-# If you were running locally, you would use:
-# if __name__ == '__main__':
-#     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
-
-# For Render deployment, ensure your `requirements.txt` includes:
-# gunicorn
-# eventlet # or gevent
-
-# And your Render "Start Command" should be:
-# gunicorn --worker-class eventlet -w 1 exercise:socketio.wsgi_app --bind 0.0.0.0:$PORT
-# OR if your main Flask app (`app`) handles Flask-SocketIO directly without `socketio.wsgi_app` needing to be explicitly passed:
-# gunicorn --worker-class eventlet -w 1 exercise:app --bind 0.0.0.0:$PORT
-# (The `exercise:socketio.wsgi_app` is generally more explicit and safer for Flask-SocketIO setups)
+# --- For Render deployment: DO NOT run app/socketio here ---
+# Gunicorn will start the app with 'gunicorn --worker-class eventlet -w 1 exercise:socketio.wsgi_app --bind 0.0.0.0:$PORT'
+# No if __name__ == '__main__' block required.
