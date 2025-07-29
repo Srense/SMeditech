@@ -486,3 +486,5 @@ def handle_send_message(data):
 
 # --- Add this line for Gunicorn compatibility ---
 wsgi_app = socketio
+if __name__ == "__main__":
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
