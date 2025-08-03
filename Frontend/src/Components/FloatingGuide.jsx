@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { io } from "socket.io-client";
 import "./FloatingGuide.css"; // Import the separate CSS file
 
-const SOCKET_URL = "http://localhost:5000"; // Change if backend is hosted elsewhere
+const SOCKET_URL = "https://s-meditech.onrender.com"; // Change if backend is hosted elsewhere
 
 // Added loggedInUsername prop to receive the user's name
 function FloatingGuide({ loggedInUsername = "Guest" }) { // Default to "Guest" if no username is provided

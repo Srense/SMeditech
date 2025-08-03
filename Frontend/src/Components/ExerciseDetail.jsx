@@ -2,8 +2,11 @@ import React, { useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import "./ExerciseDetail.css";
 
+// Change this to your deployed backend URL:
+const API_BASE_URL = "https://s-meditech.onrender.com";
+
 const exerciseNameMap = {
-  "squats": "Squats",
+  squats: "Squats",
   "finger-twirling": "Finger Twirling",
   "head-rotation": "Head Rotation",
   "fist-rotation": "Fist Rotation",
@@ -16,14 +19,14 @@ const exerciseNameMap = {
   "heel-slides": "Heel Slides",
   "ankle-pumps": "Ankle Pumps",
   "glute-bridges": "Glute Bridges",
-  "standing-marches": "Standing Marches"
+  "standing-marches": "Standing Marches",
 };
 
 const ExerciseDetail = () => {
   const { name } = useParams();
   const navigate = useNavigate();
   const exercise = exerciseNameMap[name] || name.replace(/-/g, " ");
-  const streamUrl = `http://localhost:5000/video_feed?exercise=${encodeURIComponent(exercise)}`;
+  const streamUrl = `${API_BASE_URL}/video_feed?exercise=${encodeURIComponent(exercise)}`;
 
   // Parallax effect for animated shapes
   const bgRef = useRef(null);
@@ -32,18 +35,21 @@ const ExerciseDetail = () => {
     const bg = bgRef.current;
     if (!bg) return;
     const { clientX, clientY } = e;
-    const w = window.innerWidth, h = window.innerHeight;
+    const w = window.innerWidth,
+      h = window.innerHeight;
     const x = (clientX / w - 0.5) * 40;
     const y = (clientY / h - 0.5) * 40;
-    bg.querySelectorAll('.exercise-bg-shape').forEach((shape, i) => {
-      shape.style.transform = `translate(${x * (i+1)/2}px, ${y * (i+1)/2}px) scale(1)`;
+    bg.querySelectorAll(".exercise-bg-shape").forEach((shape, i) => {
+      shape.style.transform = `translate(${(x * (i + 1)) / 2}px, ${
+        (y * (i + 1)) / 2
+      }px) scale(1)`;
     });
   };
 
   const handleMouseLeave = () => {
     if (bgRef.current) {
-      bgRef.current.querySelectorAll('.exercise-bg-shape').forEach(shape => {
-        shape.style.transform = 'translate(0,0) scale(1)';
+      bgRef.current.querySelectorAll(".exercise-bg-shape").forEach((shape) => {
+        shape.style.transform = "translate(0,0) scale(1)";
       });
     }
   };
@@ -58,7 +64,7 @@ const ExerciseDetail = () => {
   const handleDownloadReport = async () => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/report?exercise=${encodeURIComponent(exercise)}`,
+        `${API_BASE_URL}/api/report?exercise=${encodeURIComponent(exercise)}`,
         { method: "GET" }
       );
       if (!response.ok) throw new Error("Failed to download report");

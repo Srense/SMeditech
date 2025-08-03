@@ -77,7 +77,7 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
     setLoading(true);
     setSaveMsg("");
     const token = localStorage.getItem("token");
-    const res = await fetch("http://localhost:5000/api/profile", {
+    const res = await fetch("https://s-meditech.onrender.com", {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -197,7 +197,7 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      fetch("http://localhost:5000/api/profile", {
+      fetch("https://s-meditech.onrender.com", {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then(res => res.json())
@@ -210,7 +210,7 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
   useEffect(() => {
     if (profileOpen) {
       const token = localStorage.getItem("token");
-      fetch("http://localhost:5000/api/profile", {
+      fetch("https://s-meditech.onrender.com", {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then(res => res.json())
