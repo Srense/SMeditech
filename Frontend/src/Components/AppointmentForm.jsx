@@ -77,7 +77,7 @@ const AppointmentForm = ({ onClose }) => {
       return;
     }
     try {
-      const res = await fetch("https://s-meditech.onrender.com", {
+      const res = await fetch("https://s-meditech.onrender.com/api/appointment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)
