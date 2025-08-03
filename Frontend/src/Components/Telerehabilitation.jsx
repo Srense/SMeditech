@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./Telerehab.css";
 
+const API_BASE_URL = "https://s-meditech.onrender.com"; // Backend base URL
+
 // Exercise Data
 const upperBodyExercises = [
   { name: "Shoulder Circles", path: "/exercises/shoulder-circles" },
@@ -12,7 +14,7 @@ const upperBodyExercises = [
   { name: "Squats", path: "/exercises/squats" },
   { name: "Finger Twirling", path: "/exercises/finger-twirling" },
   { name: "Head Rotation", path: "/exercises/head-rotation" },
-  { name: "Fist Rotation", path: "/exercises/fist-rotation" }
+  { name: "Fist Rotation", path: "/exercises/fist-rotation" },
 ];
 
 const lowerBodyExercises = [
@@ -33,7 +35,7 @@ const ExerciseNav = ({ exercises }) => (
         className="exercise-nav-pill"
         style={{ animationDelay: `${idx * 0.07}s` }}
       >
-        <span className="exercise-icon">{String.fromCodePoint(0x1F4AA + idx)}</span>
+        <span className="exercise-icon">{String.fromCodePoint(0x1f4aa + idx)}</span>
         {ex.name}
       </Link>
     ))}
@@ -58,7 +60,7 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setEditData(prev => ({ ...prev, [name]: value }));
+    setEditData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleFileChange = (e) => {
@@ -66,7 +68,7 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setEditData(prev => ({ ...prev, profilePicture: reader.result }));
+        setEditData((prev) => ({ ...prev, profilePicture: reader.result }));
       };
       reader.readAsDataURL(file);
     }
@@ -77,20 +79,25 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
     setLoading(true);
     setSaveMsg("");
     const token = localStorage.getItem("token");
-    const res = await fetch("https://s-meditech.onrender.com", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(editData),
-    });
-    const data = await res.json();
-    if (data.user) {
-      onSave(data.user);
-      setSaveMsg("Profile updated!");
-    } else if (data.error) {
-      setSaveMsg(data.error);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/profile`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(editData),
+      });
+
+      const data = await res.json();
+      if (data.user) {
+        onSave(data.user);
+        setSaveMsg("Profile updated!");
+      } else if (data.error) {
+        setSaveMsg(data.error);
+      }
+    } catch (err) {
+      setSaveMsg("Failed to update profile. Please try again.",err);
     }
     setLoading(false);
     onClose();
@@ -98,7 +105,7 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
 
   return (
     <div className="tr-modal-overlay" onClick={onClose}>
-      <div className="tr-modal-content" onClick={e => e.stopPropagation()}>
+      <div className="tr-modal-content" onClick={(e) => e.stopPropagation()}>
         <h2>Edit Profile</h2>
         <form onSubmit={handleSubmit}>
           <div style={{ textAlign: "center" }}>
@@ -138,19 +145,19 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
           </label>
           <label>
             Bio:
-            <textarea
-              name="bio"
-              value={editData.bio}
-              onChange={handleChange}
-              rows={2}
-            />
+            <textarea name="bio" value={editData.bio} onChange={handleChange} rows={2} />
           </label>
-          <div className="tr-modal-actions" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div
+            className="tr-modal-actions"
+            style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+          >
             <div>
               <button type="submit" className="primary-btn" disabled={loading}>
                 {loading ? "Saving..." : "Save"}
               </button>
-              <button type="button" className="secondary-btn" onClick={onClose}>Cancel</button>
+              <button type="button" className="secondary-btn" onClick={onClose}>
+                Cancel
+              </button>
             </div>
             <button
               type="button"
@@ -163,7 +170,7 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
                 borderRadius: "4px",
                 marginLeft: "1em",
                 cursor: "pointer",
-                fontWeight: 600
+                fontWeight: 600,
               }}
               onClick={() => {
                 onLogout();
@@ -182,13 +189,15 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
 
 // Main Telerehabilitation Page
 const Telerehabilitation = ({ user: initialUser, onLogout }) => {
-  const [user, setUser] = useState(initialUser || {
-    username: "",
-    name: "",
-    email: "",
-    bio: "",
-    profilePicture: "",
-  });
+  const [user, setUser] = useState(
+    initialUser || {
+      username: "",
+      name: "",
+      email: "",
+      bio: "",
+      profilePicture: "",
+    }
+  );
   const [profileOpen, setProfileOpen] = useState(false);
   const [section, setSection] = useState("upper");
   const navigate = useNavigate();
@@ -197,12 +206,16 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      fetch("https://s-meditech.onrender.com", {
+      fetch(`${API_BASE_URL}/api/profile`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-        .then(res => res.json())
-        .then(data => {
+        .then((res) => res.json())
+        .then((data) => {
           if (data.user) setUser(data.user);
+        })
+        .catch((err) => {
+          // Optional: handle error or token invalidation
+          console.error("Error fetching profile:", err);
         });
     }
   }, []);
@@ -210,13 +223,18 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
   useEffect(() => {
     if (profileOpen) {
       const token = localStorage.getItem("token");
-      fetch("https://s-meditech.onrender.com", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.user) setUser(data.user);
-        });
+      if (token) {
+        fetch(`${API_BASE_URL}/api/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.user) setUser(data.user);
+          })
+          .catch((err) => {
+            console.error("Error fetching profile:", err);
+          });
+      }
     }
   }, [profileOpen]);
 
@@ -243,10 +261,17 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
       <header className="tr-header">
         {/* Animated Rehab Objects - Centered */}
         <div className="tr-header-anim-bg" aria-hidden="true">
-          {/* (SVGs omitted for brevity, keep as in your original code) */}
+          {/* (SVGs omitted for brevity, keep your original SVGs here) */}
         </div>
         <h1 className="tr-title">Telerehabilitation</h1>
-        <div className="tr-profile-icon" onClick={() => setProfileOpen(true)} tabIndex={0} title="Profile">
+        <div
+          className="tr-profile-icon"
+          onClick={() => setProfileOpen(true)}
+          tabIndex={0}
+          title="Profile"
+          role="button"
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setProfileOpen(true); }}
+        >
           <img
             src={user.profilePicture || "/images/default-avatar.png"}
             alt="Profile"
@@ -261,12 +286,14 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
         <button
           className={section === "upper" ? "active" : ""}
           onClick={() => setSection("upper")}
+          type="button"
         >
           Upper Body
         </button>
         <button
           className={section === "lower" ? "active" : ""}
           onClick={() => setSection("lower")}
+          type="button"
         >
           Lower Body
         </button>
@@ -274,9 +301,7 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
 
       {/* Section Content */}
       <div className="tr-section-content">
-        <h2>
-          {section === "upper" ? "Upper Body Exercises" : "Lower Body Exercises"}
-        </h2>
+        <h2>{section === "upper" ? "Upper Body Exercises" : "Lower Body Exercises"}</h2>
         <ExerciseNav exercises={section === "upper" ? upperBodyExercises : lowerBodyExercises} />
       </div>
 
