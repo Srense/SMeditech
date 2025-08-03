@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
 
+// Set your backend base URL here:
+const API_BASE_URL = "https://s-meditech.onrender.com";
+
 const RequestCallbackForm = ({ onClose }) => {
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
-    message: ""
+    message: "",
   });
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
@@ -14,7 +17,7 @@ const RequestCallbackForm = ({ onClose }) => {
   // Focus trap & ESC close
   useEffect(() => {
     const focusableEls = modalRef.current.querySelectorAll(
-      'input, textarea, button'
+      "input, textarea, button"
     );
     const firstEl = focusableEls[0];
     const lastEl = focusableEls[focusableEls.length - 1];
@@ -49,14 +52,15 @@ const RequestCallbackForm = ({ onClose }) => {
     const newErrors = {};
     if (!formData.name) newErrors.name = "Name is required";
     if (!formData.phone) newErrors.phone = "Phone number is required";
-    else if (!/^[0-9]{10,15}$/.test(formData.phone.replace(/\D/g, ""))) newErrors.phone = "Enter a valid phone number";
+    else if (!/^[0-9]{10,15}$/.test(formData.phone.replace(/\D/g, "")))
+      newErrors.phone = "Enter a valid phone number";
     return newErrors;
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    setErrors(prev => ({ ...prev, [name]: undefined }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
     setServerError("");
   };
 
@@ -69,10 +73,10 @@ const RequestCallbackForm = ({ onClose }) => {
       return;
     }
     try {
-      const res = await fetch("https://s-meditech.onrender.com", {
+      const res = await fetch(`${API_BASE_URL}/api/callback`, { // Fixed URL here
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
       const data = await res.json();
       if (res.ok) {
@@ -82,15 +86,22 @@ const RequestCallbackForm = ({ onClose }) => {
         setServerError(data.error || "Something went wrong. Please try again.");
       }
     } catch (err) {
-      setServerError("Could not connect to server. Please try again.",err);
+      setServerError("Could not connect to server. Please try again.", err);
     }
   };
 
   return (
     <>
-      <div className="request-callback-overlay" tabIndex={-1} aria-modal="true" role="dialog">
+      <div
+        className="request-callback-overlay"
+        tabIndex={-1}
+        aria-modal="true"
+        role="dialog"
+      >
         <div className="request-callback-container" ref={modalRef}>
-          <button className="close-btn" onClick={onClose} aria-label="Close form">&times;</button>
+          <button className="close-btn" onClick={onClose} aria-label="Close form">
+            &times;
+          </button>
           {!submitted ? (
             <>
               <h2>Request Callback</h2>
@@ -132,7 +143,9 @@ const RequestCallbackForm = ({ onClose }) => {
 
                 {serverError && <div className="error">{serverError}</div>}
 
-                <button type="submit" className="submit-btn">Request Callback</button>
+                <button type="submit" className="submit-btn">
+                  Request Callback
+                </button>
               </form>
             </>
           ) : (
@@ -145,6 +158,7 @@ const RequestCallbackForm = ({ onClose }) => {
       </div>
 
       <style>{`
+        /* Your CSS styles remain unchanged */
         .request-callback-overlay {
           position: fixed;
           top: 0; left: 0;
@@ -160,7 +174,6 @@ const RequestCallbackForm = ({ onClose }) => {
           overflow-y: auto;
           transition: background 0.3s;
         }
-
         .request-callback-container {
           background: rgba(255,255,255,0.93);
           border-radius: 2rem;
@@ -178,13 +191,11 @@ const RequestCallbackForm = ({ onClose }) => {
           max-height: calc(100vh - 120px);
           overflow-y: auto;
         }
-
         @keyframes fadeInUpForm {
-          from { opacity: 0; transform: translateY(60px) scale(0.97);}
-          60% { opacity: 0.7; transform: translateY(-12px) scale(1.04);}
-          to   { opacity: 1; transform: translateY(0) scale(1);}
+          from { opacity: 0; transform: translateY(60px) scale(0.97); }
+          60% { opacity: 0.7; transform: translateY(-12px) scale(1.04); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
-
         .request-callback-form label {
           display: block;
           margin-bottom: 0.35rem;
@@ -192,7 +203,6 @@ const RequestCallbackForm = ({ onClose }) => {
           color: #2563eb;
           letter-spacing: 0.5px;
         }
-
         .request-callback-form input,
         .request-callback-form textarea {
           width: 100%;
@@ -206,19 +216,16 @@ const RequestCallbackForm = ({ onClose }) => {
           transition: border-color 0.25s, box-shadow 0.25s;
           box-shadow: 0 2px 8px rgba(44,83,100,0.04) inset;
         }
-
         .request-callback-form input:focus,
         .request-callback-form textarea:focus {
           border-color: #6366f1;
           box-shadow: 0 0 8px #a5b4fc66;
           outline: none;
         }
-
         .request-callback-form textarea {
           min-height: 80px;
           resize: vertical;
         }
-
         .submit-btn {
           width: 100%;
           padding: 0.9rem;
@@ -233,14 +240,12 @@ const RequestCallbackForm = ({ onClose }) => {
           letter-spacing: 0.5px;
           transition: background 0.22s, transform 0.18s, box-shadow 0.18s;
         }
-
         .submit-btn:hover,
         .submit-btn:focus {
           background: linear-gradient(90deg, #06b6d4 0%, #2563eb 100%);
           transform: translateY(-2px) scale(1.04);
           box-shadow: 0 6px 28px 0 #06b6d455;
         }
-
         .close-btn {
           background: transparent;
           border: none;
@@ -252,11 +257,9 @@ const RequestCallbackForm = ({ onClose }) => {
           color: #6366f1;
           transition: color 0.3s;
         }
-
         .close-btn:hover {
           color: #06b6d4;
         }
-
         .error {
           color: #d32f2f;
           font-size: 0.97rem;
@@ -264,7 +267,6 @@ const RequestCallbackForm = ({ onClose }) => {
           margin-bottom: 1rem;
           font-weight: 600;
         }
-
         .success-message {
           text-align: center;
           color: #22c55e;
@@ -272,7 +274,6 @@ const RequestCallbackForm = ({ onClose }) => {
           font-size: 1.25rem;
           letter-spacing: 0.5px;
         }
-
         @media (max-width: 600px) {
           .request-callback-container {
             padding: 1.3rem 0.7rem 1rem 0.7rem;
