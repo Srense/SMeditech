@@ -290,11 +290,9 @@ def signup():
     password = data.get("password")
     if not username or not email or not password:
         return jsonify({"error": "Please provide username, email, and password"}), 400
-
     email = email.lower()
     if users_col.find_one({"email": email}):
         return jsonify({"error": "Email already registered"}), 400
-
     hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
     user = {
         "name": username,
@@ -336,7 +334,7 @@ def forgot_password():
     reset_link = f"http://localhost:3000/reset-password/{token}"
     msg = Message(
         subject="Password Reset Request",
-        recipients=[NOTIFY_EMAIL], # For actual use: [email]
+        recipients=[NOTIFY_EMAIL],  # For actual use: [email]
         body=f"Click the link to reset your password: {reset_link}\nThis link is valid for 1 hour."
     )
     try:
@@ -484,7 +482,5 @@ def handle_send_message(data):
     else:
         print("Received malformed message:", data)
 
-# --- Add this line for Gunicorn compatibility ---
-wsgi_app = socketio
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=5000, debug=True)
