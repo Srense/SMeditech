@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 
+// Define your backend base URL here (update to match your deployed backend)
+const API_BASE_URL = "https://s-meditech.onrender.com";
+
 const AppointmentForm = ({ onClose }) => {
   const [formData, setFormData] = useState({
     name: "",
@@ -7,7 +10,7 @@ const AppointmentForm = ({ onClose }) => {
     phone: "",
     age: "",
     gender: "",
-    condition: ""
+    condition: "",
   });
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
@@ -17,7 +20,7 @@ const AppointmentForm = ({ onClose }) => {
   // Focus trap & ESC close
   useEffect(() => {
     const focusableEls = modalRef.current.querySelectorAll(
-      'input, select, textarea, button'
+      "input, select, textarea, button"
     );
     const firstEl = focusableEls[0];
     const lastEl = focusableEls[focusableEls.length - 1];
@@ -52,9 +55,15 @@ const AppointmentForm = ({ onClose }) => {
     const newErrors = {};
     if (!formData.name) newErrors.name = "Name is required";
     if (!formData.email) newErrors.email = "Email is required";
-    else if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,}$/.test(formData.email)) newErrors.email = "Invalid email address";
+    else if (
+      !/^[\w-.]+@([\w-]+\.)+[\w-]{2,}$/.test(formData.email)
+    )
+      newErrors.email = "Invalid email address";
     if (!formData.phone) newErrors.phone = "Phone number is required";
-    else if (!/^[0-9]{10,15}$/.test(formData.phone.replace(/\D/g, ""))) newErrors.phone = "Enter a valid phone number";
+    else if (
+      !/^[0-9]{10,15}$/.test(formData.phone.replace(/\D/g, ""))
+    )
+      newErrors.phone = "Enter a valid phone number";
     if (!formData.age || formData.age < 1) newErrors.age = "Valid age required";
     if (!formData.gender) newErrors.gender = "Gender is required";
     if (!formData.condition) newErrors.condition = "Condition is required";
@@ -63,8 +72,8 @@ const AppointmentForm = ({ onClose }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    setErrors(prev => ({ ...prev, [name]: undefined }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
     setServerError("");
   };
 
@@ -77,10 +86,10 @@ const AppointmentForm = ({ onClose }) => {
       return;
     }
     try {
-      const res = await fetch("https://s-meditech.onrender.com/api/appointment", {
+      const res = await fetch(`${API_BASE_URL}/api/appointment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
       const data = await res.json();
       if (res.ok) {
@@ -96,13 +105,24 @@ const AppointmentForm = ({ onClose }) => {
 
   return (
     <>
-      <div className="appointment-form-overlay" tabIndex={-1} aria-modal="true" role="dialog">
+      <div
+        className="appointment-form-overlay"
+        tabIndex={-1}
+        aria-modal="true"
+        role="dialog"
+      >
         <div className="appointment-form-container" ref={modalRef}>
-          <button className="close-btn" onClick={onClose} aria-label="Close form">&times;</button>
+          <button className="close-btn" onClick={onClose} aria-label="Close form">
+            &times;
+          </button>
           {!submitted ? (
             <>
               <h2>Book an Appointment</h2>
-              <form onSubmit={handleSubmit} className="appointment-form" autoComplete="off">
+              <form
+                onSubmit={handleSubmit}
+                className="appointment-form"
+                autoComplete="off"
+              >
                 <label htmlFor="name">Name:</label>
                 <input
                   type="text"
@@ -166,7 +186,9 @@ const AppointmentForm = ({ onClose }) => {
                   required
                   aria-invalid={!!errors.gender}
                 >
-                  <option value="" disabled>Select gender</option>
+                  <option value="" disabled>
+                    Select gender
+                  </option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
                   <option value="Other">Other</option>
@@ -187,7 +209,9 @@ const AppointmentForm = ({ onClose }) => {
 
                 {serverError && <div className="error">{serverError}</div>}
 
-                <button type="submit" className="submit-btn">Submit</button>
+                <button type="submit" className="submit-btn">
+                  Submit
+                </button>
               </form>
             </>
           ) : (
