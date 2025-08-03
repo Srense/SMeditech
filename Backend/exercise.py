@@ -1,5 +1,6 @@
 import eventlet
 eventlet.monkey_patch()
+
 from flask import Flask, Response, request, jsonify
 from datetime import datetime, timedelta
 from flask_cors import CORS
@@ -18,12 +19,15 @@ from flask_socketio import SocketIO, emit
 import time
 import re
 
+
 # --- Load environment variables from .env ---
 load_dotenv()
+
 
 app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
+
 
 # --- MongoDB setup ---
 client = MongoClient(os.getenv("MONGODB_URI"))
@@ -31,6 +35,7 @@ db = client["sohel"]
 appointments_col = db["appointments"]
 callbacks_col = db["callbacks"]
 users_col = db["users"]
+
 
 # --- Flask-Mail setup ---
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
@@ -42,19 +47,24 @@ app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
 mail = Mail(app)
 NOTIFY_EMAIL = os.getenv('NOTIFY_EMAIL')
 
+
 # --- Password reset serializer ---
 serializer = URLSafeTimedSerializer(os.getenv('MAIL_PASSWORD') or "secret-key")
 
+
 # --- JWT Secret ---
 JWT_SECRET = os.getenv('JWT_SECRET', 'your_jwt_secret_key')
+
 
 # --- Initialize MediaPipe ---
 mp_pose = mp.solutions.pose
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 
+
 pose = mp_pose.Pose()
 hands = mp_hands.Hands()
+
 
 def calculate_angle(a, b, c):
     a = np.array([a.x, a.y])
@@ -65,6 +75,7 @@ def calculate_angle(a, b, c):
     if angle > 180.0:
         angle = 360 - angle
     return angle
+
 
 # --- Exercise Tracking Variables ---
 reps = 0
@@ -77,6 +88,7 @@ progress = 0
 max_points = 50
 achievements = []
 history = []
+
 
 data_tracking = {
     "Squats": {"times": [], "reps": [], "points": []},
@@ -95,8 +107,10 @@ data_tracking = {
     "Standing Marches": {"times": [], "reps": []}
 }
 
+
 time_start = datetime.now()
 tracking_interval = 5
+
 
 def make_prediction(history):
     if len(history) < 5:
@@ -110,11 +124,13 @@ def make_prediction(history):
     else:
         return "Your progress is stable. Keep it up!"
 
+
 def generate_frames():
     global exercise, reps, points, stage, fullscreen, level, progress, max_points, achievements, history, data_tracking, time_start
     cap = cv2.VideoCapture(0)
     screen_width = 1280
     screen_height = 720
+
 
     while True:
         ret, frame = cap.read()
@@ -122,12 +138,15 @@ def generate_frames():
             print("Warning: Could not read frame from camera. Is a webcam available or is this running remotely?")
             break
 
+
         frame = cv2.flip(frame, 1)
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results_pose = pose.process(frame_rgb)
         results_hands = hands.process(frame_rgb)
 
+
         cv2.putText(frame, f"Exercise: {exercise}", (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
+
 
         if exercise == "Squats" and results_pose.pose_landmarks:
             mp_drawing.draw_landmarks(frame, results_pose.pose_landmarks, mp_pose.POSE_CONNECTIONS)
@@ -143,6 +162,7 @@ def generate_frames():
                 reps += 1
                 points += 10
 
+
         elif exercise == "Finger Twirling" and results_hands.multi_hand_landmarks:
             for hand_landmarks in results_hands.multi_hand_landmarks:
                 mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
@@ -155,6 +175,7 @@ def generate_frames():
                     stage = "open"
                     reps += 1
                     points += 5
+
 
         elif exercise == "Head Rotation" and results_pose.pose_landmarks:
             mp_drawing.draw_landmarks(frame, results_pose.pose_landmarks, mp_pose.POSE_CONNECTIONS)
@@ -170,6 +191,7 @@ def generate_frames():
                 reps += 1
                 points += 7
 
+
         elif exercise == "Fist Rotation" and results_hands.multi_hand_landmarks:
             for hand_landmarks in results_hands.multi_hand_landmarks:
                 mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
@@ -183,10 +205,12 @@ def generate_frames():
                     reps += 1
                     points += 8
 
+
         progress = (points % max_points) / max_points * 100
         if points // max_points + 1 > level:
             level += 1
             achievements.append(f"Reached Level {level}")
+
 
         elapsed_time = datetime.now() - time_start
         if elapsed_time.total_seconds() >= tracking_interval:
@@ -198,6 +222,7 @@ def generate_frames():
             history.append(points)
         prediction = make_prediction(history)
 
+
         cv2.putText(frame, f"Reps: {reps}", (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
         cv2.putText(frame, f"Points: {points}", (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
         cv2.putText(frame, f"Level: {level}", (10, 160), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
@@ -207,13 +232,16 @@ def generate_frames():
         if achievements:
             cv2.putText(frame, f"Achievements: {', '.join(achievements[-3:])}", (10, 290), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
 
+
         frame = cv2.resize(frame, (screen_width, screen_height))
         ret, buffer = cv2.imencode('.jpg', frame)
         frame_bytes = buffer.tobytes()
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
+
     cap.release()
+
 
 @app.route('/video_feed')
 def video_feed():
@@ -224,6 +252,7 @@ def video_feed():
         reps, points = 0, 0
         stage = None
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 @app.route('/api/appointment', methods=['POST'])
 def book_appointment():
@@ -244,6 +273,7 @@ def book_appointment():
     except Exception as e:
         print("Error saving appointment:", e)
         return jsonify({"error": "Failed to save appointment"}), 500
+
 
 @app.route('/api/callback', methods=['POST'])
 def request_callback():
@@ -268,8 +298,10 @@ def request_callback():
         print("Error saving callback or sending email:", e)
         return jsonify({"error": "Failed to save callback or send email"}), 500
 
+
 def find_user(email):
     return users_col.find_one({"email": email})
+
 
 def serialize_user(user):
     user["_id"] = str(user["_id"])
@@ -277,12 +309,14 @@ def serialize_user(user):
         user.pop("password")
     return user
 
+
 def create_jwt(user_id):
     payload = {
         "user_id": user_id,
         "exp": datetime.utcnow() + timedelta(minutes=15)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
 
 @app.route('/api/signup', methods=['POST'])
 def signup():
@@ -310,6 +344,7 @@ def signup():
     user.pop("password")
     return jsonify({"user": user}), 201
 
+
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
@@ -321,6 +356,7 @@ def login():
         return jsonify({"error": "Invalid email or password"}), 401
     token = create_jwt(str(user["_id"]))
     return jsonify({"token": token, "user": serialize_user(user)}), 200
+
 
 @app.route('/api/forgot-password', methods=['POST'])
 def forgot_password():
@@ -345,6 +381,7 @@ def forgot_password():
         print("Error sending reset email:", e)
     return jsonify({"message": "If an account exists, a reset link has been sent."}), 200
 
+
 @app.route('/api/reset-password/<token>', methods=['POST'])
 def reset_password(token):
     data = request.json
@@ -362,6 +399,7 @@ def reset_password(token):
     users_col.update_one({"email": email}, {"$set": {"password": hashed_pw}})
     return jsonify({"message": "Password reset successful"}), 200
 
+
 def get_current_user():
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
@@ -378,12 +416,14 @@ def get_current_user():
         print(f"Token decoding error: {e}")
         return None, "Invalid or expired token"
 
+
 @app.route('/api/profile', methods=['GET'])
 def get_profile():
     user, err = get_current_user()
     if err:
         return jsonify({"error": err}), 401
     return jsonify({"user": serialize_user(user)}), 200
+
 
 @app.route('/api/profile', methods=['PATCH'])
 def update_profile():
@@ -404,6 +444,7 @@ def update_profile():
     user = users_col.find_one({"_id": user["_id"]})
     return jsonify({"user": serialize_user(user)}), 200
 
+
 @app.route('/api/db_status')
 def db_status():
     try:
@@ -412,9 +453,16 @@ def db_status():
     except Exception as e:
         return jsonify({"status": "disconnected", "error": str(e)}), 500
 
+
 @app.route('/api/health')
 def health():
     return jsonify({"status": "ok"}), 200
+
+
+@app.route('/')
+def home():
+    return "Welcome to SMeditech backend API. Please use /api endpoints."
+
 
 KNOWLEDGE_BASE = [
     {"id": "faq1", "keywords": ["services", "physiotherapy", "offer"], "content": "Our website offers ... [redacted for length] ... 'Services' page."},
@@ -422,6 +470,7 @@ KNOWLEDGE_BASE = [
     # ... continue your knowledge base ...
     {"id": "unrelated", "keywords": ["weather", "capital", "random"], "content": "I am an AI assistant focused on physiotherapy services ..."}
 ]
+
 
 def get_ai_response_from_kb(user_query):
     user_query_lower = user_query.lower()
@@ -455,6 +504,7 @@ def get_ai_response_from_kb(user_query):
         else:
             return "I apologize, but I couldn't find a direct answer to that in my knowledge base. My purpose is to assist with questions related to physiotherapy services and our clinic. Could you please ask something else or rephrase your question?"
 
+
 @socketio.on('send_message', namespace='/chat')
 def handle_send_message(data):
     user_message_text = data.get("text")
@@ -484,5 +534,7 @@ def handle_send_message(data):
     else:
         print("Received malformed message:", data)
 
+
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    socketio.run(app, host="0.0.0.0", port=port, debug=True)
