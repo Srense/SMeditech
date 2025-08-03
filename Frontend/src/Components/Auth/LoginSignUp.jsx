@@ -4,6 +4,9 @@ import "./LoginSignUp.css";
 import Header from "../Header";
 import NavDrawer from "../NavDrawer";
 
+// Define your backend API base URL here:
+const API_BASE_URL = "https://s-meditech.onrender.com";
+
 export default function LoginSignup({ onAuthSuccess }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const logoSrc = "/images/Circle Only.svg";
@@ -26,7 +29,7 @@ export default function LoginSignup({ onAuthSuccess }) {
     const { name, value } = e.target;
     setForm({
       ...form,
-      [name]: name === "email" ? value.toLowerCase() : value
+      [name]: name === "email" ? value.toLowerCase() : value,
     });
   };
 
@@ -42,13 +45,15 @@ export default function LoginSignup({ onAuthSuccess }) {
     setLoading(true);
 
     if (/[A-Z]/.test(form.email)) {
-      setError("Please enter your email in lowercase letters only (e.g., user@example.com).");
+      setError(
+        "Please enter your email in lowercase letters only (e.g., user@example.com)."
+      );
       setLoading(false);
       return;
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/login", {
+      const res = await fetch(`${API_BASE_URL}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: form.email, password: form.password }),
@@ -73,19 +78,21 @@ export default function LoginSignup({ onAuthSuccess }) {
     setLoading(true);
 
     if (/[A-Z]/.test(form.email)) {
-      setError("Please enter your email in lowercase letters only (e.g., user@example.com).");
+      setError(
+        "Please enter your email in lowercase letters only (e.g., user@example.com)."
+      );
       setLoading(false);
       return;
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/signup", {
+      const res = await fetch(`${API_BASE_URL}/api/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: form.username,
           email: form.email,
-          password: form.password
+          password: form.password,
         }),
       });
       const data = await res.json();
@@ -112,12 +119,14 @@ export default function LoginSignup({ onAuthSuccess }) {
       return;
     }
     if (/[A-Z]/.test(resetEmail)) {
-      setResetError("Please enter your email in lowercase letters only (e.g., user@example.com).");
+      setResetError(
+        "Please enter your email in lowercase letters only (e.g., user@example.com)."
+      );
       return;
     }
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/forgot-password", {
+      const res = await fetch(`${API_BASE_URL}/api/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: resetEmail }),
@@ -185,7 +194,8 @@ export default function LoginSignup({ onAuthSuccess }) {
             <h2>Reset Password</h2>
             {resetSent ? (
               <div className="success-msg">
-                If an account exists for <b>{resetEmail}</b>, a password reset link has been sent.
+                If an account exists for <b>{resetEmail}</b>, a password reset link
+                has been sent.
               </div>
             ) : (
               <>
@@ -197,7 +207,9 @@ export default function LoginSignup({ onAuthSuccess }) {
                   onChange={handleResetEmailChange}
                   disabled={loading}
                 />
-                <div style={{ fontSize: "0.9rem", color: "#888", marginBottom: "0.5rem" }}>
+                <div
+                  style={{ fontSize: "0.9rem", color: "#888", marginBottom: "0.5rem" }}
+                >
                   Please enter your email in lowercase (e.g., user@example.com)
                 </div>
                 <button type="submit" disabled={loading}>
