@@ -52,7 +52,6 @@ serializer = URLSafeTimedSerializer(os.getenv('MAIL_PASSWORD') or "secret-key")
 # JWT Secret
 JWT_SECRET = os.getenv('JWT_SECRET', 'your_jwt_secret_key')
 
-# Helper functions
 def find_user(email):
     return users_col.find_one({"email": email})
 
@@ -84,7 +83,6 @@ def get_current_user():
         print(f"Token decoding error: {e}")
         return None, "Invalid or expired token"
 
-# API Routes
 @app.route('/api/appointment', methods=['POST'])
 def book_appointment():
     data = request.json
@@ -249,67 +247,42 @@ def health():
 def home():
     return "Welcome to SMeditech backend API. Please use /api endpoints."
 
-# Comprehensive knowledge base for SMeditech chatbot AI assistant
 KNOWLEDGE_BASE = [
-    {"id": "faq1", "keywords": ["what", "sm meditech", "about", "website", "name"], "content": "SMeditech is a modern remote physiotherapy platform designed to help users book appointments, communicate with therapists, and follow personalized exercise rehabilitation programs using AI-powered assistance and live exercise tracking."},
-    {"id": "faq2", "keywords": ["how", "work", "function", "use", "website"], "content": "The website allows you to create an account to manage your profile and appointments, perform physiotherapy exercises guided by AI pose detection using your webcam, chat with a virtual assistant for support, and download exercise reports to monitor your progress."},
-    {"id": "faq3", "keywords": ["services", "offer", "physiotherapy", "treatment", "programs"], "content": "SMeditech offers physiotherapy services including injury rehabilitation, pain management, prevention programs, and personalized exercise plans — all accessible remotely via online booking and tele-rehabilitation."},
-    {"id": "faq4", "keywords": ["how", "book", "appointment", "callback"], "content": "You can book an appointment easily by filling out the online booking form or by requesting a callback through the contact form on the website."},
-    {"id": "faq5", "keywords": ["exercise", "tracking", "how", "work", "webcam", "mediaPipe"], "content": "Exercise tracking is performed in real-time using your webcam and MediaPipe’s pose estimation technology within the browser. The system counts your repetitions and analyzes your movements to provide feedback and ensure correct exercise form."},
-    {"id": "faq6", "keywords": ["exercises", "supported", "track", "types"], "content": "Current supported exercises include squats, push-ups, arm raises, wrist rotations, finger twirling, and more, with plans to expand."},
-    {"id": "faq7", "keywords": ["special", "equipment", "need"], "content": "No special equipment is required. A standard webcam or device camera is sufficient for exercise tracking."},
-    {"id": "faq8", "keywords": ["account", "create", "sign up"], "content": "Create an account by signing up with a username, email, and password to access personalized features."},
-    {"id": "faq9", "keywords": ["forgot", "password", "reset"], "content": "If you forget your password, use the Forgot Password feature to receive a secure reset link by email."},
-    {"id": "faq10", "keywords": ["privacy", "security", "data", "safe"], "content": "Your data is kept secure using industry-standard encryption and authentication practices. Passwords and sensitive data are never shared or exposed."},
-    {"id": "faq11", "keywords": ["password", "api", "key", "secret"], "content": "I'm sorry, but I can't share sensitive or private information. Please contact the site administrator for authorized assistance."},
-    {"id": "faq12", "keywords": ["technologies", "used", "tech", "stack"], "content": "The frontend is built with React and MediaPipe JS for AI pose detection. The backend uses Python Flask with MongoDB for data storage, JWT for authentication, and Flask-SocketIO for real-time chat features."},
-    {"id": "faq13", "keywords": ["webcam", "backend", "camera"], "content": "For privacy and platform restrictions, webcam access runs only on your device within your browser. The backend processes and stores data but does not access your camera."},
-    {"id": "faq14", "keywords": ["start", "exercises", "how"], "content": "After logging in, select an exercise, and allow webcam access for AI pose detection to guide and count your repetitions in real time."},
-    {"id": "faq15", "keywords": ["help", "support", "chat"], "content": "An AI chat assistant is available on the site to answer common questions about services, exercises, appointments, and more."},
-    {"id": "faq16", "keywords": ["reports", "download", "exercise"], "content": "You can download your exercise progress reports from the specific exercise pages after sessions."},
-    {"id": "faq17", "keywords": ["troubleshoot", "chat", "video", "connection"], "content": "Ensure stable internet, camera permissions enabled, and that frontend/backend URLs and sockets are correctly configured for smooth operation."},
-    {"id": "faq18", "keywords": ["contact", "support", "clinic"], "content": "You can contact the clinic via the contact form or by booking an appointment for additional support."},
+    {"id": "faq1", "keywords": ["services", "physiotherapy", "offer"], "content": "Our website offers comprehensive physiotherapy services including rehabilitation, injury prevention, pain management, and personalized exercise programs. Visit our 'Services' page for more details."},
+    {"id": "faq2", "keywords": ["book", "appointment", "schedule"], "content": "Booking an appointment is easy! You can use our online booking form or contact us directly."},
+    {"id": "faq3", "keywords": ["contact", "phone", "email", "address"], "content": "You can reach us through our contact form, call our clinic, or visit us in person."},
     {"id": "unrelated", "keywords": ["weather", "capital", "random"], "content": "I am an AI assistant focused on physiotherapy services and our clinic."}
 ]
 
 def get_ai_response_from_kb(user_query):
     user_query_lower = user_query.lower()
-
-    # Deny sensitive requests immediately
-    sensitive_keywords = ["password", "api key", "mongo uri", "secret", "private", "confidential"]
-    if any(word in user_query_lower for word in sensitive_keywords):
-        return "I'm sorry, but I can't share sensitive or private information. Please contact the site admin for assistance."
-
-    # Greetings and polite phrases handling
     if re.search(r'\b(hello|hi|hey|greetings)\b', user_query_lower):
         return "Hello! I'm your AI Physiotherapy Assistant. How can I help you today with our services or clinic information?"
     if re.search(r'\b(thank you|thanks|appreciate)\b', user_query_lower):
         return "You're most welcome! Is there anything else I can assist you with regarding your physiotherapy needs?"
     if re.search(r'\b(nothing else|no more|bye|goodbye)\b', user_query_lower):
         return "Alright, feel free to reach out if you have more questions later. Have a great day!"
-
-    # Search knowledge base by keyword intersection
     best_match_doc = None
     max_matches = 0
     query_words = set(re.findall(r'\b\w+\b', user_query_lower))
     for doc in KNOWLEDGE_BASE:
+        doc_content_lower = doc["content"].lower()
         doc_keywords = set(doc.get("keywords", []))
-        matches = len(query_words.intersection(doc_keywords))
-        if matches > max_matches:
-            max_matches = matches
+        doc_words_from_content = set(re.findall(r'\b\w+\b', doc_content_lower))
+        all_doc_terms = doc_keywords.union(doc_words_from_content)
+        current_matches = len(query_words.intersection(all_doc_terms))
+        if current_matches > max_matches:
+            max_matches = current_matches
             best_match_doc = doc
-
+    time.sleep(1.5)
     if best_match_doc and max_matches > 0:
         return best_match_doc["content"]
+    else:
+        if re.search(r'\b(physiotherapy|clinic|services|appointment)\b', user_query_lower):
+            return "I can help with questions about our physiotherapy services, booking appointments, clinic location, or contact details. Could you please specify what you're looking for?"
+        else:
+            return "I apologize, but I couldn't find a direct answer to that in my knowledge base. My purpose is to assist with questions related to physiotherapy services and our clinic. Could you please ask something else or rephrase your question?"
 
-    # Fallback default responses
-    if re.search(r'\b(physiotherapy|clinic|services|appointment)\b', user_query_lower):
-        return "I can help with questions about our physiotherapy services, booking appointments, clinic location, or contact details. Could you please specify what you're looking for?"
-    return ("I apologize, but I couldn't find a direct answer to that in my knowledge base. "
-            "My purpose is to assist with questions related to physiotherapy services and our clinic. "
-            "Could you please ask something else or rephrase your question?")
-
-# Socket.IO chat message handling
 @socketio.on('send_message', namespace='/chat')
 def handle_send_message(data):
     user_message_text = data.get("text")
@@ -320,16 +293,13 @@ def handle_send_message(data):
             'username': username,
             'timestamp': datetime.now().strftime("%I:%M %p")
         }, broadcast=True, namespace='/chat')
-
         emit('receive_message', {
             'text': 'Typing...',
             'username': 'AI Assistant',
             'timestamp': datetime.now().strftime("%I:%M %p"),
             'isTyping': True
         }, room=request.sid, namespace='/chat')
-
         ai_response_text = get_ai_response_from_kb(user_message_text)
-
         emit('clear_typing_indicator', {'username': 'AI Assistant'}, room=request.sid, namespace='/chat')
         emit('receive_message', {
             'text': ai_response_text,
