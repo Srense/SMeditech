@@ -369,7 +369,7 @@ def forgot_password():
     if not user:
         return jsonify({"message": "If an account exists, a reset link has been sent."}), 200
     token = serializer.dumps(email, salt="reset-password")
-    reset_link = f"https://smeditech.onrender.com/reset-password/{token}"
+    reset_link = f"http://localhost:3000/reset-password/{token}"
     msg = Message(
         subject="Password Reset Request",
         recipients=[NOTIFY_EMAIL],  # For actual use: [email]
