@@ -1,6 +1,6 @@
 .tr-main-bg {
   min-height: 100vh;
-  background: url("./images/tele.png") no-repeat center center fixed;
+  background: url("/images/tele.png") no-repeat center center fixed;
   background-size: cover;
   font-family: 'Montserrat', sans-serif;
   padding-bottom: 3rem;
