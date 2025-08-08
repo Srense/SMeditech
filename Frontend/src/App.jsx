@@ -36,16 +36,7 @@ export const App = () => {
       handleLogout("Session expired. Please log in again.");
     }, expiresIn);
 
-    // Idle timeout (1 min)
-    const idleTimeout = 1 * 60 * 1000;
-    const resetIdleTimer = () => {
-      if (idleTimer.current) clearTimeout(idleTimer.current);
-      idleTimer.current = setTimeout(() => {
-        handleLogout("You were logged out due to inactivity.");
-      }, idleTimeout);
-    };
-    window.onmousemove = window.onkeydown = resetIdleTimer;
-    resetIdleTimer();
+    
   };
 
   // Logout handler
