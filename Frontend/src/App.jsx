@@ -16,13 +16,11 @@ export const App = () => {
   const [user, setUser] = useState(null);
   const [loadingSession, setLoadingSession] = useState(true);
 
-  const idleTimer = useRef(null);
   const absoluteTimer = useRef(null);
 
-  // Setup inactivity and absolute timers
+  // --- Session (only absolute/JWT expiry, no inactivity!) ---
   const setupSessionTimers = (token) => {
     if (absoluteTimer.current) clearTimeout(absoluteTimer.current);
-    if (idleTimer.current) clearTimeout(idleTimer.current);
 
     let exp = null;
     try {
@@ -35,39 +33,25 @@ export const App = () => {
     absoluteTimer.current = setTimeout(() => {
       handleLogout("Session expired. Please log in again.");
     }, expiresIn);
-
-    // Idle timeout (1 min)
-    const idleTimeout = 1 * 60 * 1000;
-    const resetIdleTimer = () => {
-      if (idleTimer.current) clearTimeout(idleTimer.current);
-      idleTimer.current = setTimeout(() => {
-        handleLogout("You were logged out due to inactivity.");
-      }, idleTimeout);
-    };
-    window.onmousemove = window.onkeydown = resetIdleTimer;
-    resetIdleTimer();
   };
 
-  // Logout handler
+  // --- Logout handler ---
   const handleLogout = (msg) => {
     localStorage.removeItem("token");
     setUser(null);
-    if (idleTimer.current) clearTimeout(idleTimer.current);
     if (absoluteTimer.current) clearTimeout(absoluteTimer.current);
-    window.onmousemove = null;
-    window.onkeydown = null;
     if (msg) alert(msg);
     // Don't use navigate here, as App is outside Router. Let routes handle redirect.
   };
 
-  // Handle successful login/signup
+  // --- Handle successful login/signup ---
   const handleAuthSuccess = (userData, token) => {
     setUser(userData);
     localStorage.setItem("token", token);
     setupSessionTimers(token);
   };
 
-  // Restore session on mount
+  // --- Restore session on mount ---
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -87,10 +71,7 @@ export const App = () => {
     setLoadingSession(false);
 
     return () => {
-      if (idleTimer.current) clearTimeout(idleTimer.current);
       if (absoluteTimer.current) clearTimeout(absoluteTimer.current);
-      window.onmousemove = null;
-      window.onkeydown = null;
     };
     // eslint-disable-next-line
   }, []);
