@@ -1,9 +1,7 @@
 import React, { useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import ExerciseCamera from "./ExerciseCamera";  // Import the new webcam pose detection component
 import "./ExerciseDetail.css";
-
-// Change this to your deployed backend URL:
-const API_BASE_URL = "https://s-meditech.onrender.com";
 
 const exerciseNameMap = {
   squats: "Squats",
@@ -26,7 +24,6 @@ const ExerciseDetail = () => {
   const { name } = useParams();
   const navigate = useNavigate();
   const exercise = exerciseNameMap[name] || name.replace(/-/g, " ");
-  const streamUrl = `${API_BASE_URL}/video_feed?exercise=${encodeURIComponent(exercise)}`;
 
   // Parallax effect for animated shapes
   const bgRef = useRef(null);
@@ -54,9 +51,8 @@ const ExerciseDetail = () => {
     }
   };
 
-  // End exercise handler (navigate back or trigger logic)
+  // End exercise handler
   const handleEndExercise = () => {
-    // You can call an API here if needed
     navigate("/telerehabilitation");
   };
 
@@ -64,7 +60,7 @@ const ExerciseDetail = () => {
   const handleDownloadReport = async () => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/report?exercise=${encodeURIComponent(exercise)}`,
+        `/api/report?exercise=${encodeURIComponent(exercise)}`,
         { method: "GET" }
       );
       if (!response.ok) throw new Error("Failed to download report");
@@ -72,7 +68,7 @@ const ExerciseDetail = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${exercise}_report.pdf`; // Or .csv, depending on backend
+      link.download = `${exercise}_report.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -95,21 +91,16 @@ const ExerciseDetail = () => {
       <div className="exercise-bg-shape shape1"></div>
       <div className="exercise-bg-shape shape2"></div>
       <div className="exercise-bg-shape shape3"></div>
+
       {/* Main Card */}
       <div className="exercise-detail-card">
         <h2 className="exercise-detail-title">
           Live Exercise: <span>{exercise}</span>
         </h2>
-        <div className="exercise-detail-video-wrapper">
-          <img
-            src={streamUrl}
-            alt={`Live ${exercise}`}
-            className="exercise-detail-video"
-          />
-          <span className="live-badge">
-            <span className="live-dot"></span>LIVE
-          </span>
-        </div>
+
+        {/* Replace backend stream with frontend webcam + pose detection */}
+        <ExerciseCamera exercise={exercise} />
+
         <div className="exercise-detail-actions">
           <button
             className="exercise-end-btn"
@@ -126,6 +117,7 @@ const ExerciseDetail = () => {
             Download Report
           </button>
         </div>
+
         <Link to="/telerehabilitation" className="exercise-detail-back-btn">
           <i className="fas fa-arrow-left"></i> Back to Exercises
         </Link>
