@@ -9,6 +9,7 @@ const ExerciseCamera = ({ exercise }) => {
   const [reps, setReps] = useState(0);
   const [stage, setStage] = useState(null);
   const [feedback, setFeedback] = useState("");
+  const waitForNext = useRef(false);  // Use ref for debounce
 
   // Calculate the angle between three landmarks
   const calculateAngle = (a, b, c) => {
@@ -21,8 +22,6 @@ const ExerciseCamera = ({ exercise }) => {
 
   useEffect(() => {
     if (!videoRef.current) return;
-
-    let waitForNext = false;
 
     const onResults = (results) => {
       const canvas = canvasRef.current;
@@ -50,7 +49,7 @@ const ExerciseCamera = ({ exercise }) => {
 
       const lm = results.poseLandmarks;
 
-      if (!waitForNext) {
+      if (!waitForNext.current) {
         switch (exercise) {
           case "Squats": {
             const leftHip = lm[23];
@@ -61,19 +60,18 @@ const ExerciseCamera = ({ exercise }) => {
             if (kneeAngle > 160 && stage !== "up") {
               setStage("up");
               setFeedback("Stand straight");
-              waitForNext = true;
-              setTimeout(() => (waitForNext = false), 300);
+              waitForNext.current = true;
+              setTimeout(() => (waitForNext.current = false), 300);
             } else if (kneeAngle < 90 && stage === "up") {
               setStage("down");
               setReps((prev) => prev + 1);
               setFeedback("Good squat!");
-              waitForNext = true;
-              setTimeout(() => (waitForNext = false), 300);
+              waitForNext.current = true;
+              setTimeout(() => (waitForNext.current = false), 300);
             }
             break;
           }
           case "Push-ups": {
-            // Use right shoulder (12), right elbow (14), right wrist (16) for elbow angle
             const rightShoulder = lm[12];
             const rightElbow = lm[14];
             const rightWrist = lm[16];
@@ -87,20 +85,18 @@ const ExerciseCamera = ({ exercise }) => {
             if (elbowAngle > 160 && stage !== "up") {
               setStage("up");
               setFeedback("Ready for push-up");
-              waitForNext = true;
-              setTimeout(() => (waitForNext = false), 300);
+              waitForNext.current = true;
+              setTimeout(() => (waitForNext.current = false), 300);
             } else if (elbowAngle < 90 && stage === "up") {
               setStage("down");
               setReps((prev) => prev + 1);
               setFeedback("Good push-up!");
-              waitForNext = true;
-              setTimeout(() => (waitForNext = false), 300);
+              waitForNext.current = true;
+              setTimeout(() => (waitForNext.current = false), 300);
             }
             break;
           }
           case "Arm Raises": {
-            // Use right shoulder (12), right elbow (14), right wrist (16) for raising arm
-            // Here, track vertical angle between shoulder-elbow-wrist
             const rightShoulder = lm[12];
             const rightElbow = lm[14];
             const rightWrist = lm[16];
@@ -111,24 +107,21 @@ const ExerciseCamera = ({ exercise }) => {
               rightWrist
             );
 
-            // Example logic: angle near 180 means arm raised, near 90 means lowered
             if (angle > 160 && stage !== "up") {
               setStage("up");
               setFeedback("Arm raised");
-              waitForNext = true;
-              setTimeout(() => (waitForNext = false), 300);
+              waitForNext.current = true;
+              setTimeout(() => (waitForNext.current = false), 300);
             } else if (angle < 110 && stage === "up") {
               setStage("down");
               setReps((prev) => prev + 1);
               setFeedback("Arm lowered");
-              waitForNext = true;
-              setTimeout(() => (waitForNext = false), 300);
+              waitForNext.current = true;
+              setTimeout(() => (waitForNext.current = false), 300);
             }
             break;
           }
           case "Wrist Rotations": {
-            // Could use relative movement of wrist, e.g., distance between wrist landmarks
-            // For simplicity, count full rotations - placeholder logic:
             setFeedback("Please rotate your wrists");
             break;
           }
@@ -191,9 +184,7 @@ const ExerciseCamera = ({ exercise }) => {
           boxShadow: "0 0 10px rgba(0,0,0,0.2)",
         }}
       />
-      <div
-        style={{ marginTop: "12px", fontSize: "1.2rem", fontWeight: "bold" }}
-      >
+      <div style={{ marginTop: "12px", fontSize: "1.2rem", fontWeight: "bold" }}>
         Exercise: {exercise}
       </div>
       <div style={{ fontSize: "1rem", marginTop: "6px" }}>
