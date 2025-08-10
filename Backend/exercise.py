@@ -46,7 +46,7 @@ mail = Mail(app)
 NOTIFY_EMAIL = os.getenv('NOTIFY_EMAIL')
 
 # Serializer for tokens
-serializer = URLSafeTimedSerializer(os.getenv('MAIL_PASSWORD') or "secret-key")
+serializer = URLSafeTimedSerializer(os.getenv('SECRET_KEY', 'default-secret'))
 
 # JWT secret
 JWT_SECRET = os.getenv('JWT_SECRET', 'your_jwt_secret_key')
@@ -112,14 +112,17 @@ def get_current_user():
 def send_verification_email(email):
     token = serializer.dumps(email, salt="email-verify")
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
-    # User will click the frontend link, which can then call backend /api/verify-email/<token>
-    verify_link = f"{os.getenv('API_VERIFY_REDIRECT', FRONtEND_URL + '/api/verify-email')}/{token}"
-
+    # Link to backend verification endpoint
+    verify_link = f"{FRONTEND_URL}/api/verify-email/{token}"
     try:
         msg = Message(
             subject="Verify Your Email - SMeditech",
             recipients=[email],
-            body=f"Welcome to SMeditech!\n\nPlease click below to verify your email:\n{verify_link}\n\nThis link will expire in 24 hours."
+            body=(
+                f"Welcome to SMeditech!\n\n"
+                f"Please click below to verify your email:\n{verify_link}\n\n"
+                f"This link will expire in 24 hours."
+            )
         )
         mail.send(msg)
         print(f"[INFO] Sent verification email to {email}")
