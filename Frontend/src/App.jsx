@@ -129,7 +129,7 @@ export const App = () => {
         <Route path="/verify-email-success" element={<VerifySuccess />} />
         <Route path="/verify-email-failure" element={<VerifyFailure />} />
         {/* Catch-all route */}
-        {/* <Route path="*" element={<Navigate to="/" replace />} /> */}
+         <Route path="*" element={<Navigate to="/" replace />} /> 
         <Route path="/reset-password/:token" element={<ResetPassword />} />
 
       </Routes>
