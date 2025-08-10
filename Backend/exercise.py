@@ -84,7 +84,13 @@ def get_current_user():
         print(f"Token decoding error: {e}")
         return None, "Invalid or expired token"
 
+# Strict email format validation helper
+def is_valid_email(email):
+    pattern = r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
+    return re.match(pattern, email) is not None
+
 # API Routes
+
 @app.route('/api/appointment', methods=['POST'])
 def book_appointment():
     data = request.json
@@ -128,18 +134,25 @@ def request_callback():
         print("Error saving callback or sending email:", e)
         return jsonify({"error": "Failed to save callback or send email"}), 500
 
+# SIGNUP with strict email check & verification flow
 @app.route('/api/signup', methods=['POST'])
 def signup():
     data = request.json
     username = data.get("username")
-    email = data.get("email")
+    email = data.get("email", "").strip().lower()
     password = data.get("password")
+
     if not username or not email or not password:
         return jsonify({"error": "Please provide username, email, and password"}), 400
-    email = email.lower()
+
+    if not is_valid_email(email):
+        return jsonify({"error": "Invalid email address format"}), 400
+
     if users_col.find_one({"email": email}):
         return jsonify({"error": "Email already registered"}), 400
+
     hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+
     user = {
         "name": username,
         "username": username,
@@ -147,22 +160,58 @@ def signup():
         "bio": "",
         "profilePicture": "",
         "password": hashed_pw,
+        "verified": False,
         "createdAt": datetime.utcnow()
     }
-    result = users_col.insert_one(user)
-    user["_id"] = str(result.inserted_id)
-    user.pop("password", None)
-    return jsonify({"user": user}), 201
+    users_col.insert_one(user)
 
+    # Send verification email (token valid for 1 hour)
+    token = serializer.dumps(email, salt="verify-email")
+    FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+    verify_link = f"{FRONTEND_URL}/verify-email/{token}"
+
+    msg = Message(
+        subject="Verify Your Email - SMeditech",
+        recipients=[email],
+        body=f"Hi {username},\n\nWelcome to SMeditech! Please click the link below to verify your email address:\n{verify_link}\n\nThis link expires in one hour."
+    )
+    try:
+        mail.send(msg)
+    except Exception as e:
+        print(f"Error sending verification email: {e}")
+
+    return jsonify({"message": "Signup successful! Please check your email to verify your account."}), 201
+
+# EMAIL VERIFICATION endpoint
+@app.route('/api/verify-email/<token>', methods=['GET'])
+def verify_email(token):
+    try:
+        email = serializer.loads(token, salt="verify-email", max_age=3600)
+    except Exception:
+        return jsonify({"error": "Invalid or expired verification link"}), 400
+
+    result = users_col.update_one({"email": email}, {"$set": {"verified": True}})
+    if result.matched_count == 0:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify({"message": "Email verified successfully! You can now log in."}), 200
+
+# LOGIN blocks unverified users
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
     if not data or not all(k in data for k in ("email", "password")):
         return jsonify({"error": "Please provide email and password"}), 400
-    email = data["email"].lower()
+
+    email = data["email"].strip().lower()
     user = find_user(email)
+
     if not user or not bcrypt.checkpw(data["password"].encode("utf-8"), user["password"]):
         return jsonify({"error": "Invalid email or password"}), 401
+
+    if not user.get("verified", False):
+        return jsonify({"error": "Please verify your email before logging in."}), 403
+
     token = create_jwt(str(user["_id"]))
     return jsonify({"token": token, "user": serialize_user(user)}), 200
 
@@ -249,7 +298,8 @@ def health():
 def home():
     return "Welcome to SMeditech backend API. Please use /api endpoints."
 
-# Comprehensive knowledge base for SMeditech chatbot AI assistant
+# --- Chatbot logic ---
+
 KNOWLEDGE_BASE = [
     {"id": "faq1", "keywords": ["what", "sm meditech", "about", "website", "name"], "content": "SMeditech is a modern remote physiotherapy platform designed to help users book appointments, communicate with therapists, and follow personalized exercise rehabilitation programs using AI-powered assistance and live exercise tracking."},
     {"id": "faq2", "keywords": ["how", "work", "function", "use", "website"], "content": "The website allows you to create an account to manage your profile and appointments, perform physiotherapy exercises guided by AI pose detection using your webcam, chat with a virtual assistant for support, and download exercise reports to monitor your progress."},
@@ -275,12 +325,9 @@ KNOWLEDGE_BASE = [
 def get_ai_response_from_kb(user_query):
     user_query_lower = user_query.lower()
 
-    # Deny sensitive requests immediately
     sensitive_keywords = ["password", "api key", "mongo uri", "secret", "private", "confidential"]
     if any(word in user_query_lower for word in sensitive_keywords):
         return "I'm sorry, but I can't share sensitive or private information. Please contact the site admin for assistance."
-
-    # Greetings and polite phrases handling
     if re.search(r'\b(hello|hi|hey|greetings)\b', user_query_lower):
         return "Hello! I'm your AI Physiotherapy Assistant. How can I help you today with our services or clinic information?"
     if re.search(r'\b(thank you|thanks|appreciate)\b', user_query_lower):
@@ -288,7 +335,6 @@ def get_ai_response_from_kb(user_query):
     if re.search(r'\b(nothing else|no more|bye|goodbye)\b', user_query_lower):
         return "Alright, feel free to reach out if you have more questions later. Have a great day!"
 
-    # Search knowledge base by keyword intersection
     best_match_doc = None
     max_matches = 0
     query_words = set(re.findall(r'\b\w+\b', user_query_lower))
@@ -302,14 +348,12 @@ def get_ai_response_from_kb(user_query):
     if best_match_doc and max_matches > 0:
         return best_match_doc["content"]
 
-    # Fallback default responses
     if re.search(r'\b(physiotherapy|clinic|services|appointment)\b', user_query_lower):
         return "I can help with questions about our physiotherapy services, booking appointments, clinic location, or contact details. Could you please specify what you're looking for?"
     return ("I apologize, but I couldn't find a direct answer to that in my knowledge base. "
             "My purpose is to assist with questions related to physiotherapy services and our clinic. "
             "Could you please ask something else or rephrase your question?")
 
-# Socket.IO chat message handling
 @socketio.on('send_message', namespace='/chat')
 def handle_send_message(data):
     user_message_text = data.get("text")
