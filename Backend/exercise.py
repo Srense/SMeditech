@@ -15,7 +15,7 @@ from bson import ObjectId
 from flask_socketio import SocketIO
 import requests  # For AbstractAPI calls
 
-# Load environment variables
+# Load environment variables from .env
 load_dotenv()
 
 app = Flask(__name__)
@@ -59,6 +59,7 @@ BLACKLISTED_PATTERNS = [
     "tempmail", "mailinator", "10minutemail", "yopmail", "guerrillamail",
     "trashmail", "fakeinbox", "discard.email", "sharklasers", "getnada"
 ]
+
 
 # ================= Email Validation =================
 def is_email_in_local_blacklist(email):
@@ -112,44 +113,39 @@ def get_current_user():
 def send_verification_email(email):
     token = serializer.dumps(email, salt="email-verify")
     verify_link = f"{os.getenv('BACKEND_URL', 'http://localhost:5000')}/api/verify-email/{token}"
-
     try:
         msg = Message(
             subject="Verify Your Email - SMeditech",
             recipients=[email]
         )
-
-        # Plain text fallback
         msg.body = (
             f"Welcome to SMeditech!\n\n"
             f"Click the link below to verify your email:\n"
             f"{verify_link}\n\n"
             f"This link will expire in 24 hours."
         )
-
-        # HTML version with short text instead of long URL
         msg.html = f"""
         <p>Welcome to SMeditech!</p>
-        <p>Please click the link below to verify your email:</p>
-        <p><a href="{verify_link}" 
-              style="display:inline-block;padding:10px 20px;
-                     background-color:#28a745;color:white;
-                     text-decoration:none;border-radius:5px;">
-              Activate Account
-           </a></p>
+        <p>Please click the button below to verify your email:</p>
+        <p>
+            <a href="{verify_link}"
+               style="display:inline-block;padding:10px 20px;
+               background-color:#28a745;color:white;
+               text-decoration:none;border-radius:5px;">
+               Activate Account
+            </a>
+        </p>
         <p>This link will expire in 24 hours.</p>
         """
-
         mail.send(msg)
         print(f"[INFO] Sent verification email to {email}")
     except Exception as e:
         print("[ERROR] Could not send verification email:", e)
 
-
 @app.route('/api/verify-email/<token>', methods=['GET'])
 def verify_email(token):
     try:
-        email = serializer.loads(token, salt="email-verify", max_age=86400)  # valid 24 hrs
+        email = serializer.loads(token, salt="email-verify", max_age=86400)
     except SignatureExpired:
         return jsonify({"error": "Verification link expired"}), 400
     except BadSignature:
@@ -164,6 +160,67 @@ def verify_email(token):
 
     users_col.update_one({"email": email}, {"$set": {"is_verified": True}})
     return jsonify({"message": "Email verified successfully. You can now login."}), 200
+
+
+# ================= Forgot Password =================
+def send_password_reset_email(email):
+    token = serializer.dumps(email, salt="password-reset")
+    reset_link = f"{os.getenv('BACKEND_URL', 'http://localhost:5000')}/api/reset-password/{token}"
+    try:
+        msg = Message(
+            subject="Reset Your Password - SMeditech",
+            recipients=[email]
+        )
+        msg.body = f"Click the link to reset your password: {reset_link}\nThis link expires in 1 hour."
+        msg.html = f"""
+        <p>We received a request to reset your password.</p>
+        <p>Click the button below to set a new one:</p>
+        <p>
+            <a href="{reset_link}"
+               style="display:inline-block;padding:10px 20px;
+               background-color:#dc3545;color:white;
+               text-decoration:none;border-radius:5px;">
+               Reset Password
+            </a>
+        </p>
+        <p>This link will expire in 1 hour. If you did not request this, please ignore this email.</p>
+        """
+        mail.send(msg)
+        print(f"[INFO] Sent password reset email to {email}")
+    except Exception as e:
+        print("[ERROR] Could not send password reset email:", e)
+
+@app.route('/api/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.json
+    email = data.get("email", "").lower()
+    user = find_user(email)
+    if not user:
+        return jsonify({"message": "If this email is registered, a password reset link will be sent."}), 200
+    send_password_reset_email(email)
+    return jsonify({"message": "If this email is registered, a password reset link will be sent."}), 200
+
+@app.route('/api/reset-password/<token>', methods=['POST'])
+def reset_password(token):
+    data = request.json
+    new_password = data.get("password")
+    if not new_password:
+        return jsonify({"error": "Password is required"}), 400
+    try:
+        email = serializer.loads(token, salt="password-reset", max_age=3600)
+    except SignatureExpired:
+        return jsonify({"error": "Password reset link expired"}), 400
+    except BadSignature:
+        return jsonify({"error": "Invalid password reset link"}), 400
+
+    user = find_user(email)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    hashed_pw = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt())
+    users_col.update_one({"email": email}, {"$set": {"password": hashed_pw}})
+    return jsonify({"message": "Password has been reset successfully"}), 200
+
 
 # ================= API Routes =================
 @app.route('/api/signup', methods=['POST'])
@@ -200,6 +257,7 @@ def signup():
 
     return jsonify({"message": "Signup successful! Please check your email to verify your account."}), 201
 
+
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
@@ -213,6 +271,7 @@ def login():
         return jsonify({"error": "Please verify your email before logging in"}), 403
     token = create_jwt(str(user["_id"]))
     return jsonify({"token": token, "user": serialize_user(user)}), 200
+
 
 @app.route('/api/appointment', methods=['POST'])
 def book_appointment():
@@ -233,6 +292,7 @@ def book_appointment():
     except Exception as e:
         print("Error saving appointment:", e)
         return jsonify({"error": "Failed to save appointment"}), 500
+
 
 @app.route('/api/callback', methods=['POST'])
 def request_callback():
@@ -257,9 +317,11 @@ def request_callback():
         print("Error saving callback or sending email:", e)
         return jsonify({"error": "Failed to save callback or send email"}), 500
 
+
 @app.route('/')
 def home():
     return "Welcome to SMeditech backend API. Please use /api endpoints."
+
 
 # ================= Run Server =================
 if __name__ == "__main__":
