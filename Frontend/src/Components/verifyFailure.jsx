@@ -1,4 +1,3 @@
-// src/pages/VerifyFailure.jsx
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -12,23 +11,26 @@ export default function VerifyFailure() {
   } else if (reason === "invalid") {
     message = "Invalid verification link 🚫";
   } else if (reason === "notfound") {
-    message = "User not found in the system ⚠️";
+    message = "User not found in our system ⚠️";
   }
 
   return (
     <div style={{ textAlign: "center", marginTop: "50px" }}>
       <h1>{message}</h1>
       <p>Please try signing up again or request a new verification email.</p>
-      <Link to="/">
-        <button style={{
-          padding: "10px 20px",
-          background: "#f44336",
-          color: "white",
-          border: "none",
-          cursor: "pointer",
-          borderRadius: "5px"
-        }}>
-          Go to Home
+      <Link to="/auth">
+        <button
+          style={{
+            padding: "10px 20px",
+            background: "#f44336",
+            color: "white",
+            border: "none",
+            cursor: "pointer",
+            borderRadius: "5px",
+            marginTop: "10px",
+          }}
+        >
+          Go to Login
         </button>
       </Link>
     </div>
