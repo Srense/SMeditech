@@ -189,7 +189,7 @@ def signup():
     if not is_email_valid(email):
         return jsonify({"error": "Please use a valid, non-disposable email address."}), 400
 
-    if users_col.find_one({"email": email]):
+    if users_col.find_one({"email": email}):
         return jsonify({"error": "Email already registered"}), 400
 
     hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
