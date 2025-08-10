@@ -60,7 +60,6 @@ BLACKLISTED_PATTERNS = [
     "trashmail", "fakeinbox", "discard.email", "sharklasers", "getnada"
 ]
 
-
 # ================= Email Validation =================
 def is_email_in_local_blacklist(email):
     return any(pattern in email.lower() for pattern in BLACKLISTED_PATTERNS)
@@ -94,25 +93,10 @@ def create_jwt(user_id):
         JWT_SECRET, algorithm="HS256"
     )
 
-def get_current_user():
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return None, "Missing or invalid token"
-    token = auth_header.split(' ')[1]
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-        user = users_col.find_one({"_id": ObjectId(payload.get('user_id'))})
-        if not user:
-            return None, "User not found"
-        return user, None
-    except Exception as e:
-        print(f"Token decoding error: {e}")
-        return None, "Invalid or expired token"
-
 # ================= Email Verification =================
 def send_verification_email(email):
     token = serializer.dumps(email, salt="email-verify")
-    verify_link = f"{os.getenv('BACKEND_URL', 'http://localhost:5000')}/api/verify-email/{token}"
+    verify_link = f"{os.getenv('FRONTEND_URL', 'http://localhost:3000')}/verify-email/{token}"  # redirect to frontend
     try:
         msg = Message(
             subject="Verify Your Email - SMeditech",
@@ -138,7 +122,6 @@ def send_verification_email(email):
         <p>This link will expire in 24 hours.</p>
         """
         mail.send(msg)
-        print(f"[INFO] Sent verification email to {email}")
     except Exception as e:
         print("[ERROR] Could not send verification email:", e)
 
@@ -161,11 +144,11 @@ def verify_email(token):
     users_col.update_one({"email": email}, {"$set": {"is_verified": True}})
     return jsonify({"message": "Email verified successfully. You can now login."}), 200
 
-
 # ================= Forgot Password =================
 def send_password_reset_email(email):
     token = serializer.dumps(email, salt="password-reset")
-    reset_link = f"{os.getenv('BACKEND_URL', 'http://localhost:5000')}/api/reset-password/{token}"
+    # Link now points to frontend page, not backend API
+    reset_link = f"{os.getenv('FRONTEND_URL', 'http://localhost:3000')}/reset-password/{token}"
     try:
         msg = Message(
             subject="Reset Your Password - SMeditech",
@@ -186,7 +169,6 @@ def send_password_reset_email(email):
         <p>This link will expire in 1 hour. If you did not request this, please ignore this email.</p>
         """
         mail.send(msg)
-        print(f"[INFO] Sent password reset email to {email}")
     except Exception as e:
         print("[ERROR] Could not send password reset email:", e)
 
@@ -195,13 +177,14 @@ def forgot_password():
     data = request.json
     email = data.get("email", "").lower()
     user = find_user(email)
-    if not user:
-        return jsonify({"message": "If this email is registered, a password reset link will be sent."}), 200
-    send_password_reset_email(email)
+    # Don't reveal if account exists
+    if user:
+        send_password_reset_email(email)
     return jsonify({"message": "If this email is registered, a password reset link will be sent."}), 200
 
 @app.route('/api/reset-password/<token>', methods=['POST'])
 def reset_password(token):
+    # Called by the frontend form after user enters new password
     data = request.json
     new_password = data.get("password")
     if not new_password:
@@ -221,8 +204,7 @@ def reset_password(token):
     users_col.update_one({"email": email}, {"$set": {"password": hashed_pw}})
     return jsonify({"message": "Password has been reset successfully"}), 200
 
-
-# ================= API Routes =================
+# ================= Signup/Login =================
 @app.route('/api/signup', methods=['POST'])
 def signup():
     data = request.json
@@ -250,13 +232,8 @@ def signup():
     }
     users_col.insert_one(user)
 
-    try:
-        send_verification_email(email)
-    except Exception as e:
-        print("[ERROR] Email send failed:", e)
-
+    send_verification_email(email)
     return jsonify({"message": "Signup successful! Please check your email to verify your account."}), 201
-
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -272,56 +249,45 @@ def login():
     token = create_jwt(str(user["_id"]))
     return jsonify({"token": token, "user": serialize_user(user)}), 200
 
-
+# ================= Appointment & Callback =================
 @app.route('/api/appointment', methods=['POST'])
 def book_appointment():
     data = request.json
     if not data:
         return jsonify({"error": "No data provided"}), 400
-    try:
-        appointments_col.insert_one({
-            "name": data.get("name"),
-            "email": data.get("email"),
-            "phone": data.get("phone"),
-            "age": data.get("age"),
-            "gender": data.get("gender"),
-            "condition": data.get("condition"),
-            "createdAt": datetime.utcnow()
-        })
-        return jsonify({"message": "Appointment saved"}), 201
-    except Exception as e:
-        print("Error saving appointment:", e)
-        return jsonify({"error": "Failed to save appointment"}), 500
-
+    appointments_col.insert_one({
+        "name": data.get("name"),
+        "email": data.get("email"),
+        "phone": data.get("phone"),
+        "age": data.get("age"),
+        "gender": data.get("gender"),
+        "condition": data.get("condition"),
+        "createdAt": datetime.utcnow()
+    })
+    return jsonify({"message": "Appointment saved"}), 201
 
 @app.route('/api/callback', methods=['POST'])
 def request_callback():
     data = request.json
     if not data:
         return jsonify({"error": "No data provided"}), 400
-    try:
-        callbacks_col.insert_one({
-            "name": data.get("name"),
-            "phone": data.get("phone"),
-            "message": data.get("message"),
-            "createdAt": datetime.utcnow()
-        })
-        msg = Message(
-            subject="New Callback Request",
-            recipients=[NOTIFY_EMAIL],
-            body=f"Name: {data.get('name')}\nPhone: {data.get('phone')}\nMessage: {data.get('message', '')}"
-        )
-        mail.send(msg)
-        return jsonify({"message": "Callback request saved and email sent"}), 201
-    except Exception as e:
-        print("Error saving callback or sending email:", e)
-        return jsonify({"error": "Failed to save callback or send email"}), 500
-
+    callbacks_col.insert_one({
+        "name": data.get("name"),
+        "phone": data.get("phone"),
+        "message": data.get("message"),
+        "createdAt": datetime.utcnow()
+    })
+    msg = Message(
+        subject="New Callback Request",
+        recipients=[NOTIFY_EMAIL],
+        body=f"Name: {data.get('name')}\nPhone: {data.get('phone')}\nMessage: {data.get('message', '')}"
+    )
+    mail.send(msg)
+    return jsonify({"message": "Callback request saved and email sent"}), 201
 
 @app.route('/')
 def home():
     return "Welcome to SMeditech backend API. Please use /api endpoints."
-
 
 # ================= Run Server =================
 if __name__ == "__main__":
