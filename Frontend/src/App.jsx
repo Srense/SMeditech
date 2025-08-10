@@ -6,11 +6,15 @@ import { Footer } from "./Components/footer";
 import LoginSignup from "./Components/Auth/LoginSignUp";
 import Telerehabilitation from "./Components/Telerehabilitation";
 import ContactUs from "./Components/ContactUs";
-import Achievement from './Components/Achievement';
+import Achievement from "./Components/Achievement";
 import Team from "./Components/Team";
 import ExerciseDetail from "./Components/ExerciseDetail";
-import '@fortawesome/fontawesome-free/css/all.min.css';
-import FloatingGuide from "./Components/FloatingGuide"; // Import the floating guide component
+import "@fortawesome/fontawesome-free/css/all.min.css";
+import FloatingGuide from "./Components/FloatingGuide";
+
+// New pages for email verification
+import VerifySuccess from "./pages/VerifySuccess";
+import VerifyFailure from "./pages/VerifyFailure";
 
 export const App = () => {
   const [user, setUser] = useState(null);
@@ -35,8 +39,6 @@ export const App = () => {
     absoluteTimer.current = setTimeout(() => {
       handleLogout("Session expired. Please log in again.");
     }, expiresIn);
-
-    
   };
 
   // Logout handler
@@ -48,7 +50,6 @@ export const App = () => {
     window.onmousemove = null;
     window.onkeydown = null;
     if (msg) alert(msg);
-    // Don't use navigate here, as App is outside Router. Let routes handle redirect.
   };
 
   // Handle successful login/signup
@@ -65,7 +66,6 @@ export const App = () => {
       try {
         const decoded = jwtDecode(token);
         if (decoded.exp * 1000 > Date.now()) {
-          // Optionally fetch user info from backend here using decoded.user_id
           setUser({ _id: decoded.user_id });
           setupSessionTimers(token);
         } else {
@@ -83,7 +83,6 @@ export const App = () => {
       window.onmousemove = null;
       window.onkeydown = null;
     };
-    // eslint-disable-next-line
   }, []);
 
   if (loadingSession) return null; // Or a loading spinner
@@ -125,10 +124,14 @@ export const App = () => {
             )
           }
         />
+
+        {/* ✅ New Routes for Email Verification */}
+        <Route path="/verify-email-success" element={<VerifySuccess />} />
+        <Route path="/verify-email-failure" element={<VerifyFailure />} />
+
         {/* Catch-all route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      {/* Floating guidance button appears on all pages */}
       <FloatingGuide />
       <Footer />
     </Router>
