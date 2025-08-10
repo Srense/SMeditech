@@ -4,7 +4,7 @@ import "./LoginSignUp.css";
 import Header from "../Header";
 import NavDrawer from "../NavDrawer";
 
-// Define your backend API base URL here:
+// Backend API base URL:
 const API_BASE_URL = "https://s-meditech.onrender.com";
 
 export default function LoginSignup({ onAuthSuccess }) {
@@ -24,7 +24,7 @@ export default function LoginSignup({ onAuthSuccess }) {
   const [signupSuccess, setSignupSuccess] = useState(false);
   const navigate = useNavigate();
 
-  // Lowercase email on change
+  // Lowercase email
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm({
@@ -33,7 +33,7 @@ export default function LoginSignup({ onAuthSuccess }) {
     });
   };
 
-  // For forgot password email field, also lowercase
+  // Lowercase for forgot password as well
   const handleResetEmailChange = (e) => {
     setResetEmail(e.target.value.toLowerCase());
   };
@@ -45,9 +45,7 @@ export default function LoginSignup({ onAuthSuccess }) {
     setLoading(true);
 
     if (/[A-Z]/.test(form.email)) {
-      setError(
-        "Please enter your email in lowercase letters only (e.g., user@example.com)."
-      );
+      setError("Please enter your email in lowercase letters only (e.g., user@example.com).");
       setLoading(false);
       return;
     }
@@ -78,9 +76,7 @@ export default function LoginSignup({ onAuthSuccess }) {
     setLoading(true);
 
     if (/[A-Z]/.test(form.email)) {
-      setError(
-        "Please enter your email in lowercase letters only (e.g., user@example.com)."
-      );
+      setError("Please enter your email in lowercase letters only (e.g., user@example.com).");
       setLoading(false);
       return;
     }
@@ -96,7 +92,8 @@ export default function LoginSignup({ onAuthSuccess }) {
         }),
       });
       const data = await res.json();
-      if (res.ok && data.user) {
+      // Changed this logic: Treat any res.ok as signup success!
+      if (res.ok) {
         setSignupSuccess(true);
         setIsLogin(true);
         setForm({ username: "", email: "", password: "" });
@@ -119,9 +116,7 @@ export default function LoginSignup({ onAuthSuccess }) {
       return;
     }
     if (/[A-Z]/.test(resetEmail)) {
-      setResetError(
-        "Please enter your email in lowercase letters only (e.g., user@example.com)."
-      );
+      setResetError("Please enter your email in lowercase letters only (e.g., user@example.com).");
       return;
     }
     setLoading(true);
@@ -233,7 +228,7 @@ export default function LoginSignup({ onAuthSuccess }) {
             <h2>Login</h2>
             {signupSuccess && (
               <div className="success-msg">
-                Signup successful! Please log in with your credentials.
+                Signup successful! Please check your email to verify your account before logging in.
               </div>
             )}
             <input
