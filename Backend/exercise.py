@@ -1,7 +1,7 @@
 import eventlet
 eventlet.monkey_patch()
 
-from flask import Flask, request, jsonify, redirect
+from flask import Flask, request, jsonify
 from datetime import datetime, timedelta
 from flask_cors import CORS
 from flask_mail import Mail, Message
@@ -26,7 +26,7 @@ CORS(app,
      supports_credentials=True)
 
 socketio = SocketIO(app,
-                   cors_allowed_origins=["https://smeditech.onrender.com", "http://localhost:3000"])
+                    cors_allowed_origins=["https://smeditech.onrender.com", "http://localhost:3000"])
 
 # MongoDB setup
 client = MongoClient(os.getenv("MONGODB_URI"))
@@ -112,8 +112,7 @@ def get_current_user():
 def send_verification_email(email):
     token = serializer.dumps(email, salt="email-verify")
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
-    # Link to backend verification endpoint
-    verify_link = f"{FRONTEND_URL}/api/verify-email/{token}"
+    verify_link = f"{os.getenv('BACKEND_URL', 'http://localhost:5000')}/api/verify-email/{token}"
     try:
         msg = Message(
             subject="Verify Your Email - SMeditech",
@@ -131,22 +130,22 @@ def send_verification_email(email):
 
 @app.route('/api/verify-email/<token>', methods=['GET'])
 def verify_email(token):
-    FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
     try:
         email = serializer.loads(token, salt="email-verify", max_age=86400)  # valid 24 hrs
     except SignatureExpired:
-        return redirect(f"{FRONTEND_URL}/verify-email-failure?reason=expired")
+        return jsonify({"error": "Verification link expired"}), 400
     except BadSignature:
-        return redirect(f"{FRONTEND_URL}/verify-email-failure?reason=invalid")
+        return jsonify({"error": "Invalid verification link"}), 400
 
     user = find_user(email)
     if not user:
-        return redirect(f"{FRONTEND_URL}/verify-email-failure?reason=notfound")
+        return jsonify({"error": "User not found"}), 404
+
     if user.get("is_verified"):
-        return redirect(f"{FRONTEND_URL}/verify-email-success?already=true")
+        return jsonify({"message": "Email already verified"}), 200
 
     users_col.update_one({"email": email}, {"$set": {"is_verified": True}})
-    return redirect(f"{FRONTEND_URL}/verify-email-success?verified=true")
+    return jsonify({"message": "Email verified successfully. You can now login."}), 200
 
 # ================= API Routes =================
 @app.route('/api/signup', methods=['POST'])
