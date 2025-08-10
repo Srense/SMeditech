@@ -15,6 +15,7 @@ import FloatingGuide from "./Components/FloatingGuide";
 // New pages for email verification
 import VerifySuccess from "./Components/VerifySuccess.jsx";
 import VerifyFailure from "./Components/verifyFailure.jsx";
+import ResetPassword from "./Components/ResetPassword.jsx";
 
 export const App = () => {
   const [user, setUser] = useState(null);
