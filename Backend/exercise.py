@@ -111,22 +111,40 @@ def get_current_user():
 # ================= Email Verification =================
 def send_verification_email(email):
     token = serializer.dumps(email, salt="email-verify")
-    FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
     verify_link = f"{os.getenv('BACKEND_URL', 'http://localhost:5000')}/api/verify-email/{token}"
+
     try:
         msg = Message(
             subject="Verify Your Email - SMeditech",
-            recipients=[email],
-            body=(
-                f"Welcome to SMeditech!\n\n"
-                f"Please click below to verify your email:\n{verify_link}\n\n"
-                f"This link will expire in 24 hours."
-            )
+            recipients=[email]
         )
+
+        # Plain text fallback
+        msg.body = (
+            f"Welcome to SMeditech!\n\n"
+            f"Click the link below to verify your email:\n"
+            f"{verify_link}\n\n"
+            f"This link will expire in 24 hours."
+        )
+
+        # HTML version with short text instead of long URL
+        msg.html = f"""
+        <p>Welcome to SMeditech!</p>
+        <p>Please click the link below to verify your email:</p>
+        <p><a href="{verify_link}" 
+              style="display:inline-block;padding:10px 20px;
+                     background-color:#28a745;color:white;
+                     text-decoration:none;border-radius:5px;">
+              Activate Account
+           </a></p>
+        <p>This link will expire in 24 hours.</p>
+        """
+
         mail.send(msg)
         print(f"[INFO] Sent verification email to {email}")
     except Exception as e:
         print("[ERROR] Could not send verification email:", e)
+
 
 @app.route('/api/verify-email/<token>', methods=['GET'])
 def verify_email(token):
