@@ -1,6 +1,7 @@
 import eventlet
 eventlet.monkey_patch()
 
+
 from flask import Flask, request, jsonify
 from datetime import datetime, timedelta
 from flask_cors import CORS
@@ -16,18 +17,23 @@ from flask_socketio import SocketIO, emit
 import time
 import re
 
+
 # Load environment variables
 load_dotenv()
 
+
 app = Flask(__name__)
+
 
 # Restrict CORS to frontend origins
 CORS(app,
      origins=["https://smeditech.onrender.com", "http://localhost:3000"],
      supports_credentials=True)
 
+
 socketio = SocketIO(app,
                    cors_allowed_origins=["https://smeditech.onrender.com", "http://localhost:3000"])
+
 
 # MongoDB setup
 client = MongoClient(os.getenv("MONGODB_URI"))
@@ -35,6 +41,7 @@ db = client["sohel"]
 appointments_col = db["appointments"]
 callbacks_col = db["callbacks"]
 users_col = db["users"]
+
 
 # Flask-Mail setup
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
@@ -46,20 +53,25 @@ app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
 mail = Mail(app)
 NOTIFY_EMAIL = os.getenv('NOTIFY_EMAIL')
 
+
 # Password reset serializer
 serializer = URLSafeTimedSerializer(os.getenv('MAIL_PASSWORD') or "secret-key")
 
+
 # JWT Secret
 JWT_SECRET = os.getenv('JWT_SECRET', 'your_jwt_secret_key')
+
 
 # Helper functions
 def find_user(email):
     return users_col.find_one({"email": email})
 
+
 def serialize_user(user):
     user["_id"] = str(user["_id"])
     user.pop("password", None)
     return user
+
 
 def create_jwt(user_id):
     payload = {
@@ -67,6 +79,7 @@ def create_jwt(user_id):
         "exp": datetime.utcnow() + timedelta(minutes=15)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
 
 def get_current_user():
     auth_header = request.headers.get('Authorization')
@@ -83,6 +96,7 @@ def get_current_user():
     except Exception as e:
         print(f"Token decoding error: {e}")
         return None, "Invalid or expired token"
+
 
 # API Routes
 @app.route('/api/appointment', methods=['POST'])
@@ -104,6 +118,7 @@ def book_appointment():
     except Exception as e:
         print("Error saving appointment:", e)
         return jsonify({"error": "Failed to save appointment"}), 500
+
 
 @app.route('/api/callback', methods=['POST'])
 def request_callback():
@@ -127,6 +142,7 @@ def request_callback():
     except Exception as e:
         print("Error saving callback or sending email:", e)
         return jsonify({"error": "Failed to save callback or send email"}), 500
+
 
 @app.route('/api/signup', methods=['POST'])
 def signup():
@@ -154,6 +170,7 @@ def signup():
     user.pop("password", None)
     return jsonify({"user": user}), 201
 
+
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
@@ -165,6 +182,7 @@ def login():
         return jsonify({"error": "Invalid email or password"}), 401
     token = create_jwt(str(user["_id"]))
     return jsonify({"token": token, "user": serialize_user(user)}), 200
+
 
 @app.route('/api/forgot-password', methods=['POST'])
 def forgot_password():
@@ -190,6 +208,7 @@ def forgot_password():
         print("Error sending reset email:", e)
     return jsonify({"message": "If an account exists, a reset link has been sent."}), 200
 
+
 @app.route('/api/reset-password/<token>', methods=['POST'])
 def reset_password(token):
     data = request.json
@@ -207,12 +226,14 @@ def reset_password(token):
     users_col.update_one({"email": email}, {"$set": {"password": hashed_pw}})
     return jsonify({"message": "Password reset successful"}), 200
 
+
 @app.route('/api/profile', methods=['GET'])
 def get_profile():
     user, err = get_current_user()
     if err:
         return jsonify({"error": err}), 401
     return jsonify({"user": serialize_user(user)}), 200
+
 
 @app.route('/api/profile', methods=['PATCH'])
 def update_profile():
@@ -233,6 +254,7 @@ def update_profile():
     user = users_col.find_one({"_id": user["_id"]})
     return jsonify({"user": serialize_user(user)}), 200
 
+
 @app.route('/api/db_status')
 def db_status():
     try:
@@ -241,13 +263,16 @@ def db_status():
     except Exception as e:
         return jsonify({"status": "disconnected", "error": str(e)}), 500
 
+
 @app.route('/api/health')
 def health():
     return jsonify({"status": "ok"}), 200
 
+
 @app.route('/')
 def home():
     return "Welcome to SMeditech backend API. Please use /api endpoints."
+
 
 # Comprehensive knowledge base for SMeditech chatbot AI assistant
 KNOWLEDGE_BASE = [
@@ -272,13 +297,16 @@ KNOWLEDGE_BASE = [
     {"id": "unrelated", "keywords": ["weather", "capital", "random"], "content": "I am an AI assistant focused on physiotherapy services and our clinic."}
 ]
 
+
 def get_ai_response_from_kb(user_query):
     user_query_lower = user_query.lower()
+
 
     # Deny sensitive requests immediately
     sensitive_keywords = ["password", "api key", "mongo uri", "secret", "private", "confidential"]
     if any(word in user_query_lower for word in sensitive_keywords):
         return "I'm sorry, but I can't share sensitive or private information. Please contact the site admin for assistance."
+
 
     # Greetings and polite phrases handling
     if re.search(r'\b(hello|hi|hey|greetings)\b', user_query_lower):
@@ -287,6 +315,7 @@ def get_ai_response_from_kb(user_query):
         return "You're most welcome! Is there anything else I can assist you with regarding your physiotherapy needs?"
     if re.search(r'\b(nothing else|no more|bye|goodbye)\b', user_query_lower):
         return "Alright, feel free to reach out if you have more questions later. Have a great day!"
+
 
     # Search knowledge base by keyword intersection
     best_match_doc = None
@@ -299,8 +328,10 @@ def get_ai_response_from_kb(user_query):
             max_matches = matches
             best_match_doc = doc
 
+
     if best_match_doc and max_matches > 0:
         return best_match_doc["content"]
+
 
     # Fallback default responses
     if re.search(r'\b(physiotherapy|clinic|services|appointment)\b', user_query_lower):
@@ -308,6 +339,7 @@ def get_ai_response_from_kb(user_query):
     return ("I apologize, but I couldn't find a direct answer to that in my knowledge base. "
             "My purpose is to assist with questions related to physiotherapy services and our clinic. "
             "Could you please ask something else or rephrase your question?")
+
 
 # Socket.IO chat message handling
 @socketio.on('send_message', namespace='/chat')
@@ -321,6 +353,7 @@ def handle_send_message(data):
             'timestamp': datetime.now().strftime("%I:%M %p")
         }, broadcast=True, namespace='/chat')
 
+
         emit('receive_message', {
             'text': 'Typing...',
             'username': 'AI Assistant',
@@ -328,7 +361,9 @@ def handle_send_message(data):
             'isTyping': True
         }, room=request.sid, namespace='/chat')
 
+
         ai_response_text = get_ai_response_from_kb(user_message_text)
+
 
         emit('clear_typing_indicator', {'username': 'AI Assistant'}, room=request.sid, namespace='/chat')
         emit('receive_message', {
@@ -338,6 +373,7 @@ def handle_send_message(data):
         }, broadcast=True, namespace='/chat')
     else:
         print("Received malformed message:", data)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
