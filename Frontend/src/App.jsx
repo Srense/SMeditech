@@ -13,8 +13,8 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 import FloatingGuide from "./Components/FloatingGuide";
 
 // New pages for email verification
-import VerifySuccess from "./pages/VerifySuccess";
-import VerifyFailure from "./pages/VerifyFailure";
+import VerifySuccess from "./Components/VerifySuccess.jsx";
+import VerifyFailure from "./Components/VerifyFailure.jsx";
 
 export const App = () => {
   const [user, setUser] = useState(null);
@@ -124,11 +124,9 @@ export const App = () => {
             )
           }
         />
-
-        {/* ✅ New Routes for Email Verification */}
+        {/* Email Verification Success/Failure Routes */}
         <Route path="/verify-email-success" element={<VerifySuccess />} />
         <Route path="/verify-email-failure" element={<VerifyFailure />} />
-
         {/* Catch-all route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
