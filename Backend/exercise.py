@@ -112,7 +112,8 @@ def get_current_user():
 def send_verification_email(email):
     token = serializer.dumps(email, salt="email-verify")
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
-    verify_link = f"{os.getenv('API_VERIFY_REDIRECT', FRONTEND_URL + '/verify-email')}/{token}"
+    # User will click the frontend link, which can then call backend /api/verify-email/<token>
+    verify_link = f"{os.getenv('API_VERIFY_REDIRECT', FRONtEND_URL + '/api/verify-email')}/{token}"
 
     try:
         msg = Message(
@@ -129,7 +130,7 @@ def send_verification_email(email):
 def verify_email(token):
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
     try:
-        email = serializer.loads(token, salt="email-verify", max_age=86400)
+        email = serializer.loads(token, salt="email-verify", max_age=86400)  # valid 24 hrs
     except SignatureExpired:
         return redirect(f"{FRONTEND_URL}/verify-email-failure?reason=expired")
     except BadSignature:
@@ -139,7 +140,7 @@ def verify_email(token):
     if not user:
         return redirect(f"{FRONTEND_URL}/verify-email-failure?reason=notfound")
     if user.get("is_verified"):
-        return redirect(f"{FRONTEND_URL}/verify-email-success?already_verified=true")
+        return redirect(f"{FRONTEND_URL}/verify-email-success?already=true")
 
     users_col.update_one({"email": email}, {"$set": {"is_verified": True}})
     return redirect(f"{FRONTEND_URL}/verify-email-success?verified=true")
@@ -193,7 +194,6 @@ def login():
     token = create_jwt(str(user["_id"]))
     return jsonify({"token": token, "user": serialize_user(user)}), 200
 
-# (Other routes like appointment, callback, reset password, profile remain unchanged...)
 @app.route('/api/appointment', methods=['POST'])
 def book_appointment():
     data = request.json
