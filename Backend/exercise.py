@@ -13,16 +13,15 @@ from itsdangerous import URLSafeTimedSerializer
 import jwt
 from bson import ObjectId
 from flask_socketio import SocketIO, emit
-import time
 import re
-import requests  # NEW for API call
+import requests  # For AbstractAPI calls
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 
-# Restrict CORS to frontend origins
+# CORS Restriction
 CORS(app,
      origins=["https://smeditech.onrender.com", "http://localhost:3000"],
      supports_credentials=True)
@@ -50,13 +49,52 @@ NOTIFY_EMAIL = os.getenv('NOTIFY_EMAIL')
 # Password reset serializer
 serializer = URLSafeTimedSerializer(os.getenv('MAIL_PASSWORD') or "secret-key")
 
-# JWT Secret
+# JWT secret
 JWT_SECRET = os.getenv('JWT_SECRET', 'your_jwt_secret_key')
 
 # AbstractAPI key
 ABSTRACT_API_KEY = os.getenv('ABSTRACT_API_KEY')
 
-# Helper functions
+# ----------------------
+# Email Validation Setup
+# ----------------------
+
+# Local fallback blacklist
+BLACKLISTED_PATTERNS = [
+    "tempmail", "mailinator", "10minutemail", "yopmail", "guerrillamail",
+    "trashmail", "fakeinbox", "discard.email", "sharklasers", "getnada"
+]
+
+def is_email_in_local_blacklist(email):
+    email_lower = email.lower()
+    return any(pattern in email_lower for pattern in BLACKLISTED_PATTERNS)
+
+# Email validation using AbstractAPI (primary) and local fallback
+def is_email_valid(email):
+    try:
+        url = f"https://emailvalidation.abstractapi.com/v1/?api_key={ABSTRACT_API_KEY}&email={email}"
+        resp = requests.get(url, timeout=5)
+        data = resp.json()
+
+        is_valid_format = data.get("is_valid_format", {}).get("value", False)
+        is_disposable = data.get("is_disposable_email", {}).get("value", True)
+        is_deliverable = data.get("is_smtp_valid", {}).get("value", False)
+
+        if is_valid_format and not is_disposable and is_deliverable:
+            return True
+        else:
+            print(f"[INFO] AbstractAPI blocked email: {email}")
+            return False
+
+    except Exception as e:
+        print(f"[WARNING] Email API failed ({e}), using local blacklist...")
+        if is_email_in_local_blacklist(email):
+            return False
+        return True  # Not in local blacklist → allow
+
+# ----------------------
+# Helper Functions
+# ----------------------
 def find_user(email):
     return users_col.find_one({"email": email})
 
@@ -88,31 +126,10 @@ def get_current_user():
         print(f"Token decoding error: {e}")
         return None, "Invalid or expired token"
 
-# NEW: Email verification with AbstractAPI
-def is_email_valid_thirdparty(email):
-    """
-    Returns True if email is valid and NOT disposable, else False.
-    """
-    try:
-        url = f"https://emailvalidation.abstractapi.com/v1/?api_key={ABSTRACT_API_KEY}&email={email}"
-        resp = requests.get(url, timeout=5)
-        data = resp.json()
-        # Check API results
-        is_valid_format = data.get("is_valid_format", {}).get("value", False)
-        is_disposable = data.get("is_disposable_email", {}).get("value", True)
-        is_deliverable = data.get("is_smtp_valid", {}).get("value", False)
-
-        # We allow only if format valid, SMTP valid, and not disposable
-        if is_valid_format and not is_disposable and is_deliverable:
-            return True
-        else:
-            print(f"Email validation failed: {data}")  # For debugging logs
-            return False
-    except Exception as e:
-        print(f"Email validation API error: {e}")
-        return False
-
+# ----------------------
 # API Routes
+# ----------------------
+
 @app.route('/api/appointment', methods=['POST'])
 def book_appointment():
     data = request.json
@@ -162,16 +179,17 @@ def signup():
     username = data.get("username")
     email = data.get("email")
     password = data.get("password")
+
     if not username or not email or not password:
         return jsonify({"error": "Please provide username, email, and password"}), 400
     
     email = email.lower()
 
-    # ✅ Third-party email validation before signup
-    if not is_email_valid_thirdparty(email):
+    # ✅ Email validation (third-party + fallback)
+    if not is_email_valid(email):
         return jsonify({"error": "Please use a valid, non-disposable email address."}), 400
 
-    if users_col.find_one({"email": email}):
+    if users_col.find_one({"email": email]):
         return jsonify({"error": "Email already registered"}), 400
 
     hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
@@ -284,6 +302,9 @@ def health():
 def home():
     return "Welcome to SMeditech backend API. Please use /api endpoints."
 
+# ----------------------
+# Run Server
+# ----------------------
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host="0.0.0.0", port=port, debug=False)
