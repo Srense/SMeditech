@@ -60,6 +60,39 @@ BLACKLISTED_PATTERNS = [
     "trashmail", "fakeinbox", "discard.email", "sharklasers", "getnada"
 ]
 
+# ================= Email Validation =================
+def is_email_in_local_blacklist(email):
+    return any(pattern in email.lower() for pattern in BLACKLISTED_PATTERNS)
+
+def is_email_valid(email):
+    try:
+        url = f"https://emailvalidation.abstractapi.com/v1/?api_key={ABSTRACT_API_KEY}&email={email}"
+        resp = requests.get(url, timeout=5)
+        data = resp.json()
+        if data.get("is_valid_format", {}).get("value") and \
+           not data.get("is_disposable_email", {}).get("value") and \
+           data.get("is_smtp_valid", {}).get("value"):
+            return True
+        return False
+    except Exception as e:
+        print(f"[WARNING] Email API failed ({e}), using local blacklist...")
+        return not is_email_in_local_blacklist(email)
+
+# ================= Helpers =================
+def find_user(email):
+    return users_col.find_one({"email": email})
+
+def serialize_user(user):
+    user["_id"] = str(user["_id"])
+    user.pop("password", None)
+    return user
+
+def create_jwt(user_id):
+    return jwt.encode(
+        {"user_id": user_id, "exp": datetime.utcnow() + timedelta(minutes=15)},
+        JWT_SECRET, algorithm="HS256"
+    )
+
 # ================= Email Verification =================
 def send_verification_email(email):
     token = serializer.dumps(email, salt="email-verify")
