@@ -35,7 +35,9 @@ const ExerciseNav = ({ exercises }) => (
         className="exercise-nav-pill"
         style={{ animationDelay: `${idx * 0.07}s` }}
       >
-        <span className="exercise-icon">{String.fromCodePoint(0x1f4aa + idx)}</span>
+        <span className="exercise-icon">
+          {String.fromCodePoint(0x1f4aa + idx)}
+        </span>
         {ex.name}
       </Link>
     ))}
@@ -46,14 +48,19 @@ const ExerciseNav = ({ exercises }) => (
 const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
   const [bio, setBio] = useState(user.bio || "");
   const [photoFile, setPhotoFile] = useState(null);
-  const [previewSrc, setPreviewSrc] = useState(user.profilePicture || "");
+  const [previewSrc, setPreviewSrc] = useState("");
   const [saveMsg, setSaveMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setBio(user.bio || "");
     setPhotoFile(null);
-    setPreviewSrc(user.profilePicture || "");
+
+    if (user._id && user.profilePicture) {
+      setPreviewSrc(`${API_BASE_URL}/api/user-photo/${user._id}`);
+    } else {
+      setPreviewSrc("/static/images/default-avatar.png");
+    }
   }, [user]);
 
   const handleBioChange = (e) => setBio(e.target.value);
@@ -66,7 +73,11 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
       reader.onloadend = () => setPreviewSrc(reader.result);
       reader.readAsDataURL(file);
     } else {
-      setPreviewSrc(user.profilePicture || "");
+      if (user._id && user.profilePicture) {
+        setPreviewSrc(`${API_BASE_URL}/api/user-photo/${user._id}`);
+      } else {
+        setPreviewSrc("/static/images/default-avatar.png");
+      }
     }
   };
 
@@ -91,6 +102,9 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
 
       const data = await res.json();
       if (data.user) {
+        if (data.user._id && data.user.profilePicture) {
+          data.user.profilePicture = `${API_BASE_URL}/api/user-photo/${data.user._id}`;
+        }
         onSave(data.user);
         setSaveMsg("Profile updated!");
       } else if (data.error) {
@@ -105,13 +119,16 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
 
   return (
     <div className="tr-modal-overlay" onClick={onClose}>
-      <div className="tr-modal-content" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="tr-modal-content"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h2>Edit Profile</h2>
         <form onSubmit={handleSubmit}>
           <div style={{ textAlign: "center" }}>
             <label htmlFor="profile-pic-input" style={{ cursor: "pointer" }}>
               <img
-                src={previewSrc || "/static/images/default-avatar.png"}
+                src={previewSrc}
                 alt="Profile"
                 className="tr-profile-modal-avatar"
               />
@@ -145,17 +162,30 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
           </label>
           <label>
             Bio:
-            <textarea name="bio" value={bio} onChange={handleBioChange} rows={2} />
+            <textarea
+              name="bio"
+              value={bio}
+              onChange={handleBioChange}
+              rows={2}
+            />
           </label>
           <div
             className="tr-modal-actions"
-            style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
           >
             <div>
               <button type="submit" className="primary-btn" disabled={loading}>
                 {loading ? "Saving..." : "Save"}
               </button>
-              <button type="button" className="secondary-btn" onClick={onClose}>
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={onClose}
+              >
                 Cancel
               </button>
             </div>
@@ -180,7 +210,11 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
               Logout
             </button>
           </div>
-          {saveMsg && <div style={{ marginTop: "1em", color: "#2563eb" }}>{saveMsg}</div>}
+          {saveMsg && (
+            <div style={{ marginTop: "1em", color: "#2563eb" }}>
+              {saveMsg}
+            </div>
+          )}
         </form>
       </div>
     </div>
@@ -190,7 +224,7 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
 // Main Telerehabilitation Page
 const Telerehabilitation = ({ user: initialUser, onLogout }) => {
   const [user, setUser] = useState(
-    initialUser || { username: "", name: "", email: "", bio: "", profilePicture: "" }
+    initialUser || { username: "", name: "", email: "", bio: "" }
   );
   const [profileOpen, setProfileOpen] = useState(false);
   const [section, setSection] = useState("upper");
@@ -205,7 +239,12 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
       })
         .then((res) => res.json())
         .then((data) => {
-          if (data.user) setUser(data.user);
+          if (data.user) {
+            if (data.user._id && data.user.profilePicture) {
+              data.user.profilePicture = `${API_BASE_URL}/api/user-photo/${data.user._id}`;
+            }
+            setUser(data.user);
+          }
         })
         .catch((err) => console.error("Error fetching profile:", err));
     }
@@ -220,7 +259,12 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
         })
           .then((res) => res.json())
           .then((data) => {
-            if (data.user) setUser(data.user);
+            if (data.user) {
+              if (data.user._id && data.user.profilePicture) {
+                data.user.profilePicture = `${API_BASE_URL}/api/user-photo/${data.user._id}`;
+              }
+              setUser(data.user);
+            }
           })
           .catch((err) => console.error("Error fetching profile:", err));
       }
@@ -231,7 +275,7 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
     <div className="tr-main-bg">
       {/* Header */}
       <header className="tr-header">
-        <div className="tr-header-anim-bg" aria-hidden="true">{/* Animations */}</div>
+        <div className="tr-header-anim-bg" aria-hidden="true"></div>
         <h1 className="tr-title">Telerehabilitation</h1>
         <div
           className="tr-profile-icon"
@@ -244,28 +288,48 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
           }}
         >
           <img
-            src={user.profilePicture || "/static/images/default-avatar.png"}
+            src={
+              user.profilePicture
+                ? user.profilePicture
+                : "/static/images/default-avatar.png"
+            }
             alt="Profile"
             className="tr-profile-avatar"
           />
-          <span className="tr-profile-name">{user.username || user.name}</span>
+          <span className="tr-profile-name">
+            {user.username || user.name}
+          </span>
         </div>
       </header>
 
       {/* Section Tabs */}
       <div className="tr-tabs">
-        <button className={section === "upper" ? "active" : ""} onClick={() => setSection("upper")}>
+        <button
+          className={section === "upper" ? "active" : ""}
+          onClick={() => setSection("upper")}
+        >
           Upper Body
         </button>
-        <button className={section === "lower" ? "active" : ""} onClick={() => setSection("lower")}>
+        <button
+          className={section === "lower" ? "active" : ""}
+          onClick={() => setSection("lower")}
+        >
           Lower Body
         </button>
       </div>
 
       {/* Section Content */}
       <div className="tr-section-content">
-        <h2>{section === "upper" ? "Upper Body Exercises" : "Lower Body Exercises"}</h2>
-        <ExerciseNav exercises={section === "upper" ? upperBodyExercises : lowerBodyExercises} />
+        <h2>
+          {section === "upper"
+            ? "Upper Body Exercises"
+            : "Lower Body Exercises"}
+        </h2>
+        <ExerciseNav
+          exercises={
+            section === "upper" ? upperBodyExercises : lowerBodyExercises
+          }
+        />
       </div>
 
       {/* Profile Modal */}
@@ -276,7 +340,13 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
           onSave={(u) => setUser(u)}
           onLogout={() => {
             localStorage.removeItem("token");
-            setUser({ username: "", name: "", email: "", bio: "", profilePicture: "" });
+            setUser({
+              username: "",
+              name: "",
+              email: "",
+              bio: "",
+              profilePicture: "",
+            });
             if (onLogout) onLogout();
             navigate("/auth");
           }}
