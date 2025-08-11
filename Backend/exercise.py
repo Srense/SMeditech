@@ -1,7 +1,7 @@
 import eventlet
 eventlet.monkey_patch()
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
 from datetime import datetime, timedelta
 from flask_cors import CORS
 from flask_mail import Mail, Message
@@ -15,7 +15,7 @@ from bson import ObjectId
 from flask_socketio import SocketIO
 import requests
 from werkzeug.utils import secure_filename
-import uuid
+import base64
 
 # Load environment variables from .env
 load_dotenv()
@@ -256,13 +256,6 @@ def login():
     return jsonify({"token": token, "user": serialize_user(user)}), 200
 
 # ================= Profile Update =================
-PROFILE_UPLOAD_DIR = os.getenv("PROFILE_UPLOAD_DIR", "profile_uploads")
-os.makedirs(PROFILE_UPLOAD_DIR, exist_ok=True)
-
-@app.route('/profile_uploads/<path:filename>')
-def uploaded_file(filename):
-    return send_from_directory(PROFILE_UPLOAD_DIR, filename)
-
 @app.route('/api/update-profile', methods=['POST'])
 def update_profile():
     auth_header = request.headers.get('Authorization', '')
@@ -279,14 +272,20 @@ def update_profile():
 
     bio = request.form.get("bio", "")
     photo_file = request.files.get("photo")
+
     update_data = {"bio": bio}
 
     if photo_file and photo_file.filename:
-        ext = os.path.splitext(secure_filename(photo_file.filename))[1]
-        filename = f"{uuid.uuid4().hex}{ext}"
-        file_path = os.path.join(PROFILE_UPLOAD_DIR, filename)
-        photo_file.save(file_path)
-        update_data["profilePicture"] = f"/profile_uploads/{filename}"
+        photo_bytes = photo_file.read()
+        encoded_img = base64.b64encode(photo_bytes).decode('utf-8')
+        ext = os.path.splitext(secure_filename(photo_file.filename))[1].lower()
+        mime_type = "image/jpeg"  # Default MIME type
+        if ext == ".png":
+            mime_type = "image/png"
+        elif ext == ".gif":
+            mime_type = "image/gif"
+        # Store image as Base64 data URI
+        update_data["profilePicture"] = f"data:{mime_type};base64,{encoded_img}"
 
     users_col.update_one({"_id": ObjectId(user_id)}, {"$set": update_data})
     user = users_col.find_one({"_id": ObjectId(user_id)})
