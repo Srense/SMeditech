@@ -35,7 +35,9 @@ const ExerciseNav = ({ exercises }) => (
         className="exercise-nav-pill"
         style={{ animationDelay: `${idx * 0.07}s` }}
       >
-        <span className="exercise-icon">{String.fromCodePoint(0x1f4aa + idx)}</span>
+        <span className="exercise-icon">
+          {String.fromCodePoint(0x1f4aa + idx)}
+        </span>
         {ex.name}
       </Link>
     ))}
@@ -64,7 +66,7 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => setPreviewSrc(reader.result);
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(file); // Preview as base64
     } else {
       setPreviewSrc(user.profilePicture || "");
     }
@@ -105,7 +107,10 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
 
   return (
     <div className="tr-modal-overlay" onClick={onClose}>
-      <div className="tr-modal-content" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="tr-modal-content"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h2>Edit Profile</h2>
         <form onSubmit={handleSubmit}>
           <div style={{ textAlign: "center" }}>
@@ -145,17 +150,34 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
           </label>
           <label>
             Bio:
-            <textarea name="bio" value={bio} onChange={handleBioChange} rows={2} />
+            <textarea
+              name="bio"
+              value={bio}
+              onChange={handleBioChange}
+              rows={2}
+            />
           </label>
           <div
             className="tr-modal-actions"
-            style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
           >
             <div>
-              <button type="submit" className="primary-btn" disabled={loading}>
+              <button
+                type="submit"
+                className="primary-btn"
+                disabled={loading}
+              >
                 {loading ? "Saving..." : "Save"}
               </button>
-              <button type="button" className="secondary-btn" onClick={onClose}>
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={onClose}
+              >
                 Cancel
               </button>
             </div>
@@ -180,7 +202,11 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
               Logout
             </button>
           </div>
-          {saveMsg && <div style={{ marginTop: "1em", color: "#2563eb" }}>{saveMsg}</div>}
+          {saveMsg && (
+            <div style={{ marginTop: "1em", color: "#2563eb" }}>
+              {saveMsg}
+            </div>
+          )}
         </form>
       </div>
     </div>
@@ -190,7 +216,13 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
 // Main Telerehabilitation Page
 const Telerehabilitation = ({ user: initialUser, onLogout }) => {
   const [user, setUser] = useState(
-    initialUser || { username: "", name: "", email: "", bio: "", profilePicture: "" }
+    initialUser || {
+      username: "",
+      name: "",
+      email: "",
+      bio: "",
+      profilePicture: "",
+    }
   );
   const [profileOpen, setProfileOpen] = useState(false);
   const [section, setSection] = useState("upper");
@@ -231,7 +263,7 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
     <div className="tr-main-bg">
       {/* Header */}
       <header className="tr-header">
-        <div className="tr-header-anim-bg" aria-hidden="true">{/* Animations */}</div>
+        <div className="tr-header-anim-bg" aria-hidden="true"></div>
         <h1 className="tr-title">Telerehabilitation</h1>
         <div
           className="tr-profile-icon"
@@ -243,29 +275,49 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
             if (e.key === "Enter" || e.key === " ") setProfileOpen(true);
           }}
         >
-          <img
-            src={user.profilePicture || "/static/images/default-avatar.png"}
-            alt="Profile"
-            className="tr-profile-avatar"
-          />
-          <span className="tr-profile-name">{user.username || user.name}</span>
+          <a
+            href={user.profilePicture}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img
+              src={user.profilePicture || "/static/images/default-avatar.png"}
+              alt="Profile"
+              className="tr-profile-avatar"
+            />
+          </a>
+          <span className="tr-profile-name">
+            {user.username || user.name}
+          </span>
         </div>
       </header>
 
       {/* Section Tabs */}
       <div className="tr-tabs">
-        <button className={section === "upper" ? "active" : ""} onClick={() => setSection("upper")}>
+        <button
+          className={section === "upper" ? "active" : ""}
+          onClick={() => setSection("upper")}
+        >
           Upper Body
         </button>
-        <button className={section === "lower" ? "active" : ""} onClick={() => setSection("lower")}>
+        <button
+          className={section === "lower" ? "active" : ""}
+          onClick={() => setSection("lower")}
+        >
           Lower Body
         </button>
       </div>
 
       {/* Section Content */}
       <div className="tr-section-content">
-        <h2>{section === "upper" ? "Upper Body Exercises" : "Lower Body Exercises"}</h2>
-        <ExerciseNav exercises={section === "upper" ? upperBodyExercises : lowerBodyExercises} />
+        <h2>
+          {section === "upper"
+            ? "Upper Body Exercises"
+            : "Lower Body Exercises"}
+        </h2>
+        <ExerciseNav
+          exercises={section === "upper" ? upperBodyExercises : lowerBodyExercises}
+        />
       </div>
 
       {/* Profile Modal */}
@@ -276,7 +328,13 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
           onSave={(u) => setUser(u)}
           onLogout={() => {
             localStorage.removeItem("token");
-            setUser({ username: "", name: "", email: "", bio: "", profilePicture: "" });
+            setUser({
+              username: "",
+              name: "",
+              email: "",
+              bio: "",
+              profilePicture: "",
+            });
             if (onLogout) onLogout();
             navigate("/auth");
           }}
