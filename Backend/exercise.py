@@ -60,75 +60,30 @@ BLACKLISTED_PATTERNS = [
     "trashmail", "fakeinbox", "discard.email", "sharklasers", "getnada"
 ]
 
-# ================= Email Validation =================
-def is_email_in_local_blacklist(email):
-    return any(pattern in email.lower() for pattern in BLACKLISTED_PATTERNS)
-
-def is_email_valid(email):
-    try:
-        url = f"https://emailvalidation.abstractapi.com/v1/?api_key={ABSTRACT_API_KEY}&email={email}"
-        resp = requests.get(url, timeout=5)
-        data = resp.json()
-        if data.get("is_valid_format", {}).get("value") and \
-           not data.get("is_disposable_email", {}).get("value") and \
-           data.get("is_smtp_valid", {}).get("value"):
-            return True
-        return False
-    except Exception as e:
-        print(f"[WARNING] Email API failed ({e}), using local blacklist...")
-        return not is_email_in_local_blacklist(email)
-
-# ================= Helpers =================
-def find_user(email):
-    return users_col.find_one({"email": email})
-
-def serialize_user(user):
-    user["_id"] = str(user["_id"])
-    user.pop("password", None)
-    return user
-
-def create_jwt(user_id):
-    return jwt.encode(
-        {"user_id": user_id, "exp": datetime.utcnow() + timedelta(minutes=15)},
-        JWT_SECRET, algorithm="HS256"
-    )
-
 # ================= Email Verification =================
 def send_verification_email(email):
     token = serializer.dumps(email, salt="email-verify")
-    verify_link = f"{os.getenv('FRONTEND_URL', 'http://localhost:3000')}/verify-email/{token}"  # redirect to frontend
+    FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+    verify_link = f"{os.getenv('BACKEND_URL', 'http://localhost:5000')}/api/verify-email/{token}"
     try:
         msg = Message(
             subject="Verify Your Email - SMeditech",
-            recipients=[email]
+            recipients=[email],
+            body=(
+                f"Welcome to SMeditech!\n\n"
+                f"Please click below to verify your email:\n{verify_link}\n\n"
+                f"This link will expire in 24 hours."
+            )
         )
-        msg.body = (
-            f"Welcome to SMeditech!\n\n"
-            f"Click the link below to verify your email:\n"
-            f"{verify_link}\n\n"
-            f"This link will expire in 24 hours."
-        )
-        msg.html = f"""
-        <p>Welcome to SMeditech!</p>
-        <p>Please click the button below to verify your email:</p>
-        <p>
-            <a href="{verify_link}"
-               style="display:inline-block;padding:10px 20px;
-               background-color:#28a745;color:white;
-               text-decoration:none;border-radius:5px;">
-               Activate Account
-            </a>
-        </p>
-        <p>This link will expire in 24 hours.</p>
-        """
         mail.send(msg)
+        print(f"[INFO] Sent verification email to {email}")
     except Exception as e:
         print("[ERROR] Could not send verification email:", e)
 
 @app.route('/api/verify-email/<token>', methods=['GET'])
 def verify_email(token):
     try:
-        email = serializer.loads(token, salt="email-verify", max_age=86400)
+        email = serializer.loads(token, salt="email-verify", max_age=86400)  # valid 24 hrs
     except SignatureExpired:
         return jsonify({"error": "Verification link expired"}), 400
     except BadSignature:
