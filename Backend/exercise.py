@@ -1,7 +1,7 @@
 import eventlet
 eventlet.monkey_patch()
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
 from datetime import datetime, timedelta
 from flask_cors import CORS
 from flask_mail import Mail, Message
@@ -16,6 +16,7 @@ from flask_socketio import SocketIO
 import requests  # For AbstractAPI calls
 from werkzeug.utils import secure_filename
 from functools import wraps
+import uuid
 
 # Load environment variables from .env
 load_dotenv()
@@ -278,10 +279,11 @@ def home():
 
 
 # ================= Profile Management =================
-UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+STATIC_IMAGE_FOLDER = os.path.join(app.root_path, "static", "images")
+os.makedirs(STATIC_IMAGE_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["STATIC_IMAGE_FOLDER"] = STATIC_IMAGE_FOLDER
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -322,10 +324,11 @@ def update_profile(current_user):
     if "photo" in request.files:
         file = request.files["photo"]
         if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            ext = file.filename.rsplit('.', 1)[1].lower()
+            filename = f"{uuid.uuid4().hex}.{ext}"
+            filepath = os.path.join(app.config["STATIC_IMAGE_FOLDER"], filename)
             file.save(filepath)
-            profile_pic_url = f"/uploads/{filename}"
+            profile_pic_url = f"/static/images/{filename}"
 
     users_col.update_one(
         {"_id": current_user["_id"]},
@@ -334,10 +337,6 @@ def update_profile(current_user):
 
     updated_user = users_col.find_one({"_id": current_user["_id"]})
     return jsonify({"user": serialize_user(updated_user)}), 200
-
-@app.route("/uploads/<filename>")
-def uploaded_file(filename):
-    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
 
 # ================= Run Server =================
