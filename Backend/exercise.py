@@ -1,7 +1,7 @@
 import eventlet
 eventlet.monkey_patch()
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from datetime import datetime, timedelta
 from flask_cors import CORS
 from flask_mail import Mail, Message
@@ -14,6 +14,8 @@ import jwt
 from bson import ObjectId
 from flask_socketio import SocketIO
 import requests
+from werkzeug.utils import secure_filename
+import uuid
 
 # Load environment variables from .env
 load_dotenv()
@@ -96,10 +98,16 @@ def create_jwt(user_id):
         JWT_SECRET, algorithm="HS256"
     )
 
+def decode_auth_token(token):
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        return payload.get("user_id")
+    except Exception:
+        return None
+
 # ================= Email Verification =================
 def send_verification_email(email):
     token = serializer.dumps(email, salt="email-verify")
-    FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
     verify_link = f"{os.getenv('BACKEND_URL', 'http://localhost:5000')}/api/verify-email/{token}"
     try:
         msg = Message(
@@ -173,9 +181,6 @@ def forgot_password():
     print(f"[DEBUG] Forgot-password for '{email}': Found user? {'YES' if user else 'NO'}")
 
     if user:
-        # Optional: require verified accounts
-        # if not user.get("is_verified"):
-        #     return jsonify({"error": "Please verify your email before resetting password"}), 403
         try:
             send_password_reset_email(email)
             print(f"[INFO] Password reset email queued for {email}")
@@ -249,6 +254,43 @@ def login():
         return jsonify({"error": "Please verify your email before logging in"}), 403
     token = create_jwt(str(user["_id"]))
     return jsonify({"token": token, "user": serialize_user(user)}), 200
+
+# ================= Profile Update =================
+PROFILE_UPLOAD_DIR = os.getenv("PROFILE_UPLOAD_DIR", "profile_uploads")
+os.makedirs(PROFILE_UPLOAD_DIR, exist_ok=True)
+
+@app.route('/profile_uploads/<path:filename>')
+def uploaded_file(filename):
+    return send_from_directory(PROFILE_UPLOAD_DIR, filename)
+
+@app.route('/api/update-profile', methods=['POST'])
+def update_profile():
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Authorization header missing or invalid"}), 401
+    token = auth_header[len("Bearer "):]
+    user_id = decode_auth_token(token)
+    if not user_id:
+        return jsonify({"error": "Invalid or expired token"}), 401
+
+    user = users_col.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    bio = request.form.get("bio", "")
+    photo_file = request.files.get("photo")
+    update_data = {"bio": bio}
+
+    if photo_file and photo_file.filename:
+        ext = os.path.splitext(secure_filename(photo_file.filename))[1]
+        filename = f"{uuid.uuid4().hex}{ext}"
+        file_path = os.path.join(PROFILE_UPLOAD_DIR, filename)
+        photo_file.save(file_path)
+        update_data["profilePicture"] = f"/profile_uploads/{filename}"
+
+    users_col.update_one({"_id": ObjectId(user_id)}, {"$set": update_data})
+    user = users_col.find_one({"_id": ObjectId(user_id)})
+    return jsonify({"user": serialize_user(user)}), 200
 
 # ================= Appointment & Callback =================
 @app.route('/api/appointment', methods=['POST'])
