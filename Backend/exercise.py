@@ -13,7 +13,7 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 import jwt
 from bson import ObjectId
 from flask_socketio import SocketIO
-import requests  # For AbstractAPI calls
+import requests
 
 # Load environment variables from .env
 load_dotenv()
@@ -80,7 +80,10 @@ def is_email_valid(email):
 
 # ================= Helpers =================
 def find_user(email):
-    return users_col.find_one({"email": email})
+    """Find user by normalized lowercase email."""
+    if not email:
+        return None
+    return users_col.find_one({"email": email.strip().lower()})
 
 def serialize_user(user):
     user["_id"] = str(user["_id"])
@@ -116,7 +119,7 @@ def send_verification_email(email):
 @app.route('/api/verify-email/<token>', methods=['GET'])
 def verify_email(token):
     try:
-        email = serializer.loads(token, salt="email-verify", max_age=86400)  # valid 24 hrs
+        email = serializer.loads(token, salt="email-verify", max_age=86400)
     except SignatureExpired:
         return jsonify({"error": "Verification link expired"}), 400
     except BadSignature:
@@ -129,13 +132,12 @@ def verify_email(token):
     if user.get("is_verified"):
         return jsonify({"message": "Email already verified"}), 200
 
-    users_col.update_one({"email": email}, {"$set": {"is_verified": True}})
+    users_col.update_one({"email": email.strip().lower()}, {"$set": {"is_verified": True}})
     return jsonify({"message": "Email verified successfully. You can now login."}), 200
 
 # ================= Forgot Password =================
 def send_password_reset_email(email):
     token = serializer.dumps(email, salt="password-reset")
-    # Link now points to frontend page, not backend API
     reset_link = f"{os.getenv('FRONTEND_URL', 'http://localhost:3000')}/reset-password/{token}"
     try:
         msg = Message(
@@ -158,21 +160,32 @@ def send_password_reset_email(email):
         """
         mail.send(msg)
     except Exception as e:
-        print("[ERROR] Could not send password reset email:", e)
+        print(f"[ERROR] Could not send password reset email to {email}: {e}")
 
 @app.route('/api/forgot-password', methods=['POST'])
 def forgot_password():
     data = request.json
-    email = data.get("email", "").lower()
+    email = data.get("email", "").strip().lower()
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
     user = find_user(email)
-    # Don't reveal if account exists
+    print(f"[DEBUG] Forgot-password for '{email}': Found user? {'YES' if user else 'NO'}")
+
     if user:
-        send_password_reset_email(email)
+        # Optional: require verified accounts
+        # if not user.get("is_verified"):
+        #     return jsonify({"error": "Please verify your email before resetting password"}), 403
+        try:
+            send_password_reset_email(email)
+            print(f"[INFO] Password reset email queued for {email}")
+        except Exception as e:
+            print(f"[ERROR] Sending password reset email failed for {email}: {e}")
+
     return jsonify({"message": "If this email is registered, a password reset link will be sent."}), 200
 
 @app.route('/api/reset-password/<token>', methods=['POST'])
 def reset_password(token):
-    # Called by the frontend form after user enters new password
     data = request.json
     new_password = data.get("password")
     if not new_password:
@@ -189,7 +202,7 @@ def reset_password(token):
         return jsonify({"error": "User not found"}), 404
 
     hashed_pw = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt())
-    users_col.update_one({"email": email}, {"$set": {"password": hashed_pw}})
+    users_col.update_one({"email": email.strip().lower()}, {"$set": {"password": hashed_pw}})
     return jsonify({"message": "Password has been reset successfully"}), 200
 
 # ================= Signup/Login =================
@@ -201,7 +214,7 @@ def signup():
     if not username or not email or not password:
         return jsonify({"error": "Please provide username, email, and password"}), 400
 
-    email = email.lower()
+    email = email.strip().lower()
     if not is_email_valid(email):
         return jsonify({"error": "Please use a valid, non-disposable email address"}), 400
     if users_col.find_one({"email": email}):
@@ -228,7 +241,7 @@ def login():
     data = request.json
     if not data or not all(k in data for k in ("email", "password")):
         return jsonify({"error": "Please provide email and password"}), 400
-    email = data["email"].lower()
+    email = data["email"].strip().lower()
     user = find_user(email)
     if not user or not bcrypt.checkpw(data["password"].encode("utf-8"), user["password"]):
         return jsonify({"error": "Invalid email or password"}), 401
