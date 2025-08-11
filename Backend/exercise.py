@@ -255,6 +255,23 @@ def login():
     token = create_jwt(str(user["_id"]))
     return jsonify({"token": token, "user": serialize_user(user)}), 200
 
+# ================= Profile Endpoint (NEW) =================
+@app.route('/api/profile', methods=['GET'])
+def get_profile():
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Authorization header missing or invalid"}), 401
+    token = auth_header[len("Bearer "):]
+    user_id = decode_auth_token(token)
+    if not user_id:
+        return jsonify({"error": "Invalid or expired token"}), 401
+
+    user = users_col.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify({"user": serialize_user(user)}), 200
+
 # ================= Profile Update =================
 @app.route('/api/update-profile', methods=['POST'])
 def update_profile():
