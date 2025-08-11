@@ -44,33 +44,29 @@ const ExerciseNav = ({ exercises }) => (
 
 // Profile Modal Component with Logout Button
 const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
-  const [editData, setEditData] = useState({
-    bio: user.bio || "",
-    profilePicture: user.profilePicture || "",
-  });
+  const [bio, setBio] = useState(user.bio || "");
+  const [photoFile, setPhotoFile] = useState(null);
+  const [previewSrc, setPreviewSrc] = useState(user.profilePicture || "");
   const [saveMsg, setSaveMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setEditData({
-      bio: user.bio || "",
-      profilePicture: user.profilePicture || "",
-    });
+    setBio(user.bio || "");
+    setPhotoFile(null);
+    setPreviewSrc(user.profilePicture || "");
   }, [user]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setEditData((prev) => ({ ...prev, [name]: value }));
-  };
+  const handleBioChange = (e) => setBio(e.target.value);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
+    setPhotoFile(file);
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditData((prev) => ({ ...prev, profilePicture: reader.result }));
-      };
+      reader.onloadend = () => setPreviewSrc(reader.result);
       reader.readAsDataURL(file);
+    } else {
+      setPreviewSrc(user.profilePicture || "");
     }
   };
 
@@ -79,14 +75,18 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
     setLoading(true);
     setSaveMsg("");
     const token = localStorage.getItem("token");
+
     try {
-      const res = await fetch(`${API_BASE_URL}/api/profile`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(editData),
+      const formData = new FormData();
+      formData.append("bio", bio);
+      if (photoFile) {
+        formData.append("photo", photoFile);
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/update-profile`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
       });
 
       const data = await res.json();
@@ -96,8 +96,8 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
       } else if (data.error) {
         setSaveMsg(data.error);
       }
-    } catch (err) {
-      setSaveMsg("Failed to update profile. Please try again.",err);
+    } catch {
+      setSaveMsg("Failed to update profile. Please try again.");
     }
     setLoading(false);
     onClose();
@@ -111,7 +111,7 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
           <div style={{ textAlign: "center" }}>
             <label htmlFor="profile-pic-input" style={{ cursor: "pointer" }}>
               <img
-                src={editData.profilePicture || "/images/default-avatar.png"}
+                src={previewSrc || "/static/images/default-avatar.png"}
                 alt="Profile"
                 className="tr-profile-modal-avatar"
               />
@@ -145,7 +145,7 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
           </label>
           <label>
             Bio:
-            <textarea name="bio" value={editData.bio} onChange={handleChange} rows={2} />
+            <textarea name="bio" value={bio} onChange={handleBioChange} rows={2} />
           </label>
           <div
             className="tr-modal-actions"
@@ -190,19 +190,13 @@ const ProfileModal = ({ user, onClose, onSave, onLogout }) => {
 // Main Telerehabilitation Page
 const Telerehabilitation = ({ user: initialUser, onLogout }) => {
   const [user, setUser] = useState(
-    initialUser || {
-      username: "",
-      name: "",
-      email: "",
-      bio: "",
-      profilePicture: "",
-    }
+    initialUser || { username: "", name: "", email: "", bio: "", profilePicture: "" }
   );
   const [profileOpen, setProfileOpen] = useState(false);
   const [section, setSection] = useState("upper");
   const navigate = useNavigate();
 
-  // Fetch full profile from backend on mount and when modal opens
+  // Fetch full profile from backend
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -213,10 +207,7 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
         .then((data) => {
           if (data.user) setUser(data.user);
         })
-        .catch((err) => {
-          // Optional: handle error or token invalidation
-          console.error("Error fetching profile:", err);
-        });
+        .catch((err) => console.error("Error fetching profile:", err));
     }
   }, []);
 
@@ -231,38 +222,16 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
           .then((data) => {
             if (data.user) setUser(data.user);
           })
-          .catch((err) => {
-            console.error("Error fetching profile:", err);
-          });
+          .catch((err) => console.error("Error fetching profile:", err));
       }
     }
   }, [profileOpen]);
-
-  // Save profile changes
-  const handleProfileSave = (updated) => setUser(updated);
-
-  // Logout function
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    setUser({
-      username: "",
-      name: "",
-      email: "",
-      bio: "",
-      profilePicture: "",
-    });
-    if (onLogout) onLogout();
-    navigate("/auth");
-  };
 
   return (
     <div className="tr-main-bg">
       {/* Header */}
       <header className="tr-header">
-        {/* Animated Rehab Objects - Centered */}
-        <div className="tr-header-anim-bg" aria-hidden="true">
-          {/* (SVGs omitted for brevity, keep your original SVGs here) */}
-        </div>
+        <div className="tr-header-anim-bg" aria-hidden="true">{/* Animations */}</div>
         <h1 className="tr-title">Telerehabilitation</h1>
         <div
           className="tr-profile-icon"
@@ -270,10 +239,12 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
           tabIndex={0}
           title="Profile"
           role="button"
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setProfileOpen(true); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") setProfileOpen(true);
+          }}
         >
           <img
-            src={user.profilePicture || "/images/default-avatar.png"}
+            src={user.profilePicture || "/static/images/default-avatar.png"}
             alt="Profile"
             className="tr-profile-avatar"
           />
@@ -283,18 +254,10 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
 
       {/* Section Tabs */}
       <div className="tr-tabs">
-        <button
-          className={section === "upper" ? "active" : ""}
-          onClick={() => setSection("upper")}
-          type="button"
-        >
+        <button className={section === "upper" ? "active" : ""} onClick={() => setSection("upper")}>
           Upper Body
         </button>
-        <button
-          className={section === "lower" ? "active" : ""}
-          onClick={() => setSection("lower")}
-          type="button"
-        >
+        <button className={section === "lower" ? "active" : ""} onClick={() => setSection("lower")}>
           Lower Body
         </button>
       </div>
@@ -310,8 +273,13 @@ const Telerehabilitation = ({ user: initialUser, onLogout }) => {
         <ProfileModal
           user={user}
           onClose={() => setProfileOpen(false)}
-          onSave={handleProfileSave}
-          onLogout={handleLogout}
+          onSave={(u) => setUser(u)}
+          onLogout={() => {
+            localStorage.removeItem("token");
+            setUser({ username: "", name: "", email: "", bio: "", profilePicture: "" });
+            if (onLogout) onLogout();
+            navigate("/auth");
+          }}
         />
       )}
     </div>
