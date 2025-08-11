@@ -14,9 +14,6 @@ import jwt
 from bson import ObjectId
 from flask_socketio import SocketIO
 import requests  # For AbstractAPI calls
-from werkzeug.utils import secure_filename
-from functools import wraps
-import uuid
 
 # Load environment variables from .env
 load_dotenv()
@@ -138,6 +135,7 @@ def verify_email(token):
 # ================= Forgot Password =================
 def send_password_reset_email(email):
     token = serializer.dumps(email, salt="password-reset")
+    # Link now points to frontend page, not backend API
     reset_link = f"{os.getenv('FRONTEND_URL', 'http://localhost:3000')}/reset-password/{token}"
     try:
         msg = Message(
@@ -167,12 +165,14 @@ def forgot_password():
     data = request.json
     email = data.get("email", "").lower()
     user = find_user(email)
+    # Don't reveal if account exists
     if user:
         send_password_reset_email(email)
     return jsonify({"message": "If this email is registered, a password reset link will be sent."}), 200
 
 @app.route('/api/reset-password/<token>', methods=['POST'])
 def reset_password(token):
+    # Called by the frontend form after user enters new password
     data = request.json
     new_password = data.get("password")
     if not new_password:
@@ -213,7 +213,7 @@ def signup():
         "username": username,
         "email": email,
         "bio": "",
-        "profilePicture": "/static/images/default-avatar.png",
+        "profilePicture": "",
         "password": hashed_pw,
         "is_verified": False,
         "createdAt": datetime.utcnow()
@@ -276,68 +276,6 @@ def request_callback():
 @app.route('/')
 def home():
     return "Welcome to SMeditech backend API. Please use /api endpoints."
-
-
-# ================= Profile Management =================
-
-STATIC_IMAGE_FOLDER = os.path.join(app.root_path, "static", "images")
-os.makedirs(STATIC_IMAGE_FOLDER, exist_ok=True)
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
-app.config["STATIC_IMAGE_FOLDER"] = STATIC_IMAGE_FOLDER
-
-def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = None
-        if "Authorization" in request.headers:
-            bearer = request.headers["Authorization"]
-            if bearer.startswith("Bearer "):
-                token = bearer.split(" ")[1]
-        if not token:
-            return jsonify({"error": "Token missing"}), 401
-        try:
-            data = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-            user = users_col.find_one({"_id": ObjectId(data["user_id"])})
-            if not user:
-                return jsonify({"error": "User not found"}), 404
-        except jwt.ExpiredSignatureError:
-            return jsonify({"error": "Token expired"}), 401
-        except Exception:
-            return jsonify({"error": "Invalid token"}), 401
-        return f(user, *args, **kwargs)
-    return decorated
-
-@app.route("/api/profile", methods=["GET"])
-@token_required
-def get_profile(current_user):
-    return jsonify({"user": serialize_user(current_user)}), 200
-
-@app.route("/api/update-profile", methods=["POST"])
-@token_required
-def update_profile(current_user):
-    bio = request.form.get("bio", "")
-    profile_pic_url = current_user.get("profilePicture", "")
-
-    if "photo" in request.files:
-        file = request.files["photo"]
-        if file and allowed_file(file.filename):
-            ext = file.filename.rsplit('.', 1)[1].lower()
-            filename = f"{uuid.uuid4().hex}.{ext}"
-            filepath = os.path.join(app.config["STATIC_IMAGE_FOLDER"], filename)
-            file.save(filepath)
-            profile_pic_url = f"/static/images/{filename}"
-
-    users_col.update_one(
-        {"_id": current_user["_id"]},
-        {"$set": {"bio": bio, "profilePicture": profile_pic_url}}
-    )
-
-    updated_user = users_col.find_one({"_id": current_user["_id"]})
-    return jsonify({"user": serialize_user(updated_user)}), 200
-
 
 # ================= Run Server =================
 if __name__ == "__main__":
